@@ -48,16 +48,22 @@ breadthFirstSolve visited ((world, path) : queue) =
         -- visited already but could eventually reach a solution. i.e. this
         -- will return "false positive" StuckStates.
         let (solves, stucks) = breadthFirstSolve visited queue
-         in (solves, stuckType world : stucks)
+         in case stuckType world of
+                        Just stuck -> (solves, stuck : stucks)
+                        Nothing -> (solves, stucks)
       _ ->
         -- Add nextWorlds to the visited set, push to back of the queue
         -- And keep searching.
         let visited' = foldr (S.insert . fst) visited nextWorlds
          in breadthFirstSolve visited' (queue ++ nextWorlds)
   where
+    pickups = legalPickups world
+    moves = legalMoves world
+    pickupWorld = foldl (\w a -> fromMaybe w (takeAction w a)) world pickups
     -- Create a list of alternate worlds that represent taking each of the
     -- currently legal moves.
-    worlds' = mapMaybe (\a -> fmap (a,) (takeAction world a)) (allActions world)
+    worlds' =
+        mapMaybe (\a -> fmap (a,) (takeAction pickupWorld a)) (legalMoves pickupWorld)
     -- Create the next worlds to add to the queue based on worlds'. This
     -- filters out worlds that are equivalent to previously visted worlds to
     -- avoid backtracking.
@@ -68,20 +74,24 @@ breadthFirstSolve visited ((world, path) : queue) =
       ]
 
 -- | Gets all possible valid actions that can be taken in the current world.
-allActions :: World -> [Action]
-allActions world@(World _ state) = legalPickups ++ legalMoves
+legalMoves :: World -> [Action]
+legalMoves world@(World _ state) =
+    [Move (currentRoom state) d | (d, p) <- currentPaths world, canMove p]
   where
     canMove p = case pathKey p of
       Just k -> k `elem` inventory world
       _ -> True
-    legalMoves =
-      [Move (currentRoom state) d | (d, p) <- currentPaths world, canMove p]
-    legalPickups = [PickUp itm | itm <- currentRoomItems world]
 
--- | Assuming the current World state is stuck, determine the cause.
-stuckType :: World -> StuckState
+
+legalPickups :: World -> [Action]
+legalPickups world = [PickUp itm | itm <- currentRoomItems world]
+
+-- | If a genuine stuck state, it
+stuckType :: World -> Maybe StuckState
 stuckType w@(World _ state) = case currentPaths w of
-  [] -> NoPath room
-  paths -> NeedItems room $ mapMaybe pathKey [p | (_, p) <- paths]
+  [] -> Just $ NoPath room
+  paths -> case mapMaybe pathKey [p | (_, p) <- paths] of
+    [] -> Nothing
+    itms -> Just $ NeedItems room itms
   where
     room = currentRoom state
