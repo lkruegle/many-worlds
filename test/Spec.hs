@@ -221,7 +221,7 @@ worldSpecGen = (\wb -> execState wb emptySpec) <$> worldBuilderGen
 -}
 
 -- ======================= --
--- Invariant properties --
+-- API properties --
 -- ======================= --
 
 {- Checking behavior of API functions:
@@ -294,13 +294,14 @@ prop_pathsUseExistingRooms = forAll worldSpecGen $ \spec ->
       pathFromRooms = [ from | (from, _) <- Map.keys (specPaths spec)]
   in all (`elem` existingRooms) (pathToRooms ++ pathFromRooms)
 
--- | Check that a path adds correct open connection
+-- | Check that a path adds correct open connections
 prop_correctPath :: Property
 prop_correctPath = forAll worldSpecFilledGen $ \spec ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
-        from = head roomIds
-        to = head (tail roomIds)
+        (from, to) = case roomIds of
+                      (x:y:_) -> (x,y)
+                      _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
         spec' = execState (path from dir to) spec
     in case ( Map.lookup (from, dir) (specPaths spec') 
             , Map.lookup (to, reverseDirection dir) (specPaths spec') 
@@ -312,14 +313,17 @@ prop_correctPath = forAll worldSpecFilledGen $ \spec ->
                             pathTo p2 == Just from && 
                             pathKey p2 == Nothing
 
--- | Check that a path adds correct open connection
+-- | Check that a path adds correct locked connections
 prop_correctLockedPath :: Property
 prop_correctLockedPath = forAll worldSpecFilledGen $ \spec ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
-        from = head roomIds
-        to = head (tail roomIds)
-        itm = head (specItems spec)
+        (from, to) = case roomIds of
+                      (x:y:_) -> (x,y)
+                      _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
+        itm = case specItems spec of
+                (x:_) -> x
+                _ -> error "worldSpecFilledGen guarantees at least 1 item"
         spec' = execState (lockedPath from dir to itm) spec
     in case ( Map.lookup (from, dir) (specPaths spec') 
             , Map.lookup (to, reverseDirection dir) (specPaths spec') 
@@ -331,12 +335,14 @@ prop_correctLockedPath = forAll worldSpecFilledGen $ \spec ->
                             pathTo p2 == Just from && 
                             pathKey p2 == Just itm
 
+-- | Check that correct open path and blocked path are added
 prop_correctSlide :: Property
 prop_correctSlide = forAll worldSpecFilledGen $ \spec ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
-        from = head roomIds
-        to = head (tail roomIds)
+        (from, to) = case roomIds of
+                      (x:y:_) -> (x,y)
+                      _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
         spec' = execState (slide from dir to) spec
     in case ( Map.lookup (from, dir) (specPaths spec') 
             , Map.lookup (to, reverseDirection dir) (specPaths spec') 
@@ -347,13 +353,17 @@ prop_correctSlide = forAll worldSpecFilledGen $ \spec ->
                             pathKey p1 == Nothing && 
                             pathTo p2 == Nothing
 
+-- | Check that correct locked path and blocked path are added
 prop_correctLockedSlide :: Property
 prop_correctLockedSlide = forAll worldSpecFilledGen $ \spec ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
-        from = head roomIds
-        to = head (tail roomIds)
-        itm = head (specItems spec)
+        (from, to) = case roomIds of
+                      (x:y:_) -> (x,y)
+                      _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
+        itm = case specItems spec of
+                (x:_) -> x
+                _ -> error "worldSpecFilledGen guarantees at least 1 item"
         spec' = execState (lockedSlide from dir to itm) spec
     in case ( Map.lookup (from, dir) (specPaths spec') 
             , Map.lookup (to, reverseDirection dir) (specPaths spec') 
