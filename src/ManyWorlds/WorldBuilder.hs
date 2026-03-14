@@ -26,7 +26,6 @@ module ManyWorlds.WorldBuilder
     -- * WorldBuilder Run functions
     buildWorld,
     buildWorld',
-    emptySpec,
 
     -- * World solver
     solveWorld,
@@ -79,16 +78,6 @@ buildWorld' builder = World spec initialState
   where
     initialState = PlayerState {currentRoom = startRoomId, heldItems = []}
     (startRoomId, spec) = runState builder emptySpec
-
--- | Helper for creating an empty world spec
-emptySpec :: WorldSpec
-emptySpec =
-  WorldSpec
-    { specRooms = Map.empty,
-      specItems = [],
-      specPaths = Map.empty,
-      specEndConditions = Map.empty
-    }
 
 -- | Declares a new item and adds it to the world.
 item ::
