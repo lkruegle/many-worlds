@@ -1,4 +1,4 @@
-module ManyWorlds.Types where
+module ManyWorlds.InternalTypes where
 
 import Control.Monad.Except
 import Control.Monad.Reader

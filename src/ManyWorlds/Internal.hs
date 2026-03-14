@@ -6,7 +6,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import qualified Data.Set as S
 import Data.Text (Text)
-import ManyWorlds.Types
+import ManyWorlds.InternalTypes
 
 -- | Updates the world with the result of taking action.
 --
