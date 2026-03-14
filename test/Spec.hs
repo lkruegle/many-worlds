@@ -6,7 +6,7 @@ import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Text (Text, pack)
 
-import ManyWorlds.Types
+import ManyWorlds.InternalTypes
 import ManyWorlds.WorldBuilder
 import ManyWorlds.WorldRunner
 import ManyWorlds.Internal
@@ -33,7 +33,7 @@ genText :: Gen Text
 genText = pack <$> arbitrary
 
 instance Arbitrary Direction where
-  arbitrary = elements [North, South, East, West] 
+  arbitrary = elements [North, South, East, West]
 
 getRoomIds :: Map.Map RoomId RoomData -> [RoomId]
 getRoomIds = Map.keys
@@ -47,7 +47,7 @@ type ApiGen = WorldSpec -> Gen (WorldBuilder (), WorldSpec)
 -- Generators independent of previous Generators
 
 itemGen :: ApiGen
-itemGen spec = do 
+itemGen spec = do
   name <- genText
   let wb = void (item name)
   return (wb, execState wb spec)
@@ -131,11 +131,11 @@ endRoomWithItemsGen spec = do
 apiFunctionGen :: ApiGen
 apiFunctionGen spec = frequency $ independent ++ dependent
   where
-    independent = 
+    independent =
       [ (3, itemGen spec)
       , (1, emptyRoomGen spec)
       ]
-    dependent = concat 
+    dependent = concat
       [ addIf (not (null (specItems spec))) -- if items exist
               [ (3, roomGen spec)
               , (1, endItemsGen spec)
@@ -145,7 +145,7 @@ apiFunctionGen spec = frequency $ independent ++ dependent
               , (2, slideGen spec)
               ],
         addIf (not (null (getRoomIds (specRooms spec)))) -- if rooms exist
-              [(1, endRoomGen spec) 
+              [(1, endRoomGen spec)
               ],
         addIf (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec))) -- rooms and items exist
               [(1, endRoomWithItemsGen spec)
@@ -185,7 +185,7 @@ worldBuilderGen = sized $ \depth -> nestFunctions depth (return ()) emptySpec
 
 -- | Generate a WorldSpec with at least 2 rooms and 1 item
 worldSpecFilledGen :: Gen WorldSpec
-worldSpecFilledGen = worldSpecGen `suchThat` \spec -> 
+worldSpecFilledGen = worldSpecGen `suchThat` \spec ->
   length (getRoomIds (specRooms spec)) > 1 && length (specItems spec) > 0
 
 worldSpecGen :: Gen WorldSpec
@@ -198,8 +198,8 @@ worldSpecGen = (\wb -> execState wb emptySpec) <$> worldBuilderGen
         (RoomId "1",RoomData {roomDesc = "_\1064511", roomItems = []}),
         (RoomId "2",RoomData {roomDesc = "`@", roomItems = [ItemId "U1",ItemId "'\1003023",ItemId "l="]}),
         (RoomId "3",RoomData {roomDesc = "\ETBr", roomItems = [ItemId "\1104189\&3",ItemId ":,",ItemId "^^",ItemId "}\1072599",ItemId "'\1003023",ItemId "l="]}),
-        (RoomId "4",RoomData {roomDesc = "\50424\140392", roomItems = [ItemId "U1"]})], 
-      specItems = [ItemId "\RS)",ItemId "\1104189\&3",ItemId ":,",ItemId "^^",ItemId "U1",ItemId "}\1072599",ItemId "fi",ItemId "'\1003023",ItemId "l="], 
+        (RoomId "4",RoomData {roomDesc = "\50424\140392", roomItems = [ItemId "U1"]})],
+      specItems = [ItemId "\RS)",ItemId "\1104189\&3",ItemId ":,",ItemId "^^",ItemId "U1",ItemId "}\1072599",ItemId "fi",ItemId "'\1003023",ItemId "l="],
       specPaths = fromList [
         ((RoomId "1",North),Path {pathTo = Just (RoomId "2"), pathKey = Just (ItemId "U1")}),
         ((RoomId "1",East),Path {pathTo = Just (RoomId "4"), pathKey = Just (ItemId "^^")}),
@@ -211,12 +211,12 @@ worldSpecGen = (\wb -> execState wb emptySpec) <$> worldBuilderGen
         ((RoomId "3",South),Path {pathTo = Just (RoomId "2"), pathKey = Nothing}),
         ((RoomId "3",East),Path {pathTo = Just (RoomId "1"), pathKey = Just (ItemId "^^")}),
         ((RoomId "4",North),Path {pathTo = Just (RoomId "2"), pathKey = Just (ItemId "}\1072599")}),
-        ((RoomId "4",West),Path {pathTo = Just (RoomId "1"), pathKey = Just (ItemId "^^")})], 
+        ((RoomId "4",West),Path {pathTo = Just (RoomId "1"), pathKey = Just (ItemId "^^")})],
       specEndConditions = fromList [
         (HoldItems [ItemId "'\1003023",ItemId "l="],"\202366\26726"),
         (HoldItems [ItemId ":,",ItemId "^^",ItemId "U1",ItemId "fi",ItemId "l="],"]\1018790"),
         (EnterRoom (RoomId "2"),":U"),
-        (EnterRoom (RoomId "4"),"u\DC1")]}) 
+        (EnterRoom (RoomId "4"),"u\DC1")]})
     (PlayerState {currentRoom = RoomId "2", heldItems = []})
 -}
 
@@ -230,7 +230,7 @@ room / emptyRoom:
   - increases (length specRooms) by one if name does not exist yet
   - does not increase length if name already exists
 
-item: 
+item:
   - increases (length specItems) by one if name does not exist yet
   - does not increase length if name already exists
 
@@ -259,12 +259,12 @@ Cannot invalidate World:
   - item
   - path
   - any EndCondition
-  
+
 Should invalidate World:
   - appending new room
--} 
+-}
 
--- | Check whether Map size of specRooms increases correctly 
+-- | Check whether Map size of specRooms increases correctly
 prop_addRoomToSpec :: Property
 prop_addRoomToSpec = forAll worldSpecGen $ \spec -> do
   let txt = pack "test"
@@ -302,14 +302,14 @@ prop_correctPath = forAll worldSpecFilledGen $ \spec ->
         from = head roomIds
         to = head (tail roomIds)
         spec' = execState (path from dir to) spec
-    in case ( Map.lookup (from, dir) (specPaths spec') 
-            , Map.lookup (to, reverseDirection dir) (specPaths spec') 
+    in case ( Map.lookup (from, dir) (specPaths spec')
+            , Map.lookup (to, reverseDirection dir) (specPaths spec')
             ) of
       (Nothing, _) -> False
       (_, Nothing) -> False
-      (Just p1, Just p2) -> pathTo p1 == Just to && 
-                            pathKey p1 == Nothing && 
-                            pathTo p2 == Just from && 
+      (Just p1, Just p2) -> pathTo p1 == Just to &&
+                            pathKey p1 == Nothing &&
+                            pathTo p2 == Just from &&
                             pathKey p2 == Nothing
 
 -- | Check that a path adds correct open connection
@@ -321,14 +321,14 @@ prop_correctLockedPath = forAll worldSpecFilledGen $ \spec ->
         to = head (tail roomIds)
         itm = head (specItems spec)
         spec' = execState (lockedPath from dir to itm) spec
-    in case ( Map.lookup (from, dir) (specPaths spec') 
-            , Map.lookup (to, reverseDirection dir) (specPaths spec') 
+    in case ( Map.lookup (from, dir) (specPaths spec')
+            , Map.lookup (to, reverseDirection dir) (specPaths spec')
             ) of
       (Nothing, _) -> False
       (_, Nothing) -> False
-      (Just p1, Just p2) -> pathTo p1 == Just to && 
-                            pathKey p1 == Just itm && 
-                            pathTo p2 == Just from && 
+      (Just p1, Just p2) -> pathTo p1 == Just to &&
+                            pathKey p1 == Just itm &&
+                            pathTo p2 == Just from &&
                             pathKey p2 == Just itm
 
 prop_correctSlide :: Property
@@ -338,13 +338,13 @@ prop_correctSlide = forAll worldSpecFilledGen $ \spec ->
         from = head roomIds
         to = head (tail roomIds)
         spec' = execState (slide from dir to) spec
-    in case ( Map.lookup (from, dir) (specPaths spec') 
-            , Map.lookup (to, reverseDirection dir) (specPaths spec') 
+    in case ( Map.lookup (from, dir) (specPaths spec')
+            , Map.lookup (to, reverseDirection dir) (specPaths spec')
             ) of
       (Nothing, _) -> False
       (_, Nothing) -> False
-      (Just p1, Just p2) -> pathTo p1 == Just to && 
-                            pathKey p1 == Nothing && 
+      (Just p1, Just p2) -> pathTo p1 == Just to &&
+                            pathKey p1 == Nothing &&
                             pathTo p2 == Nothing
 
 prop_correctLockedSlide :: Property
@@ -355,11 +355,11 @@ prop_correctLockedSlide = forAll worldSpecFilledGen $ \spec ->
         to = head (tail roomIds)
         itm = head (specItems spec)
         spec' = execState (lockedSlide from dir to itm) spec
-    in case ( Map.lookup (from, dir) (specPaths spec') 
-            , Map.lookup (to, reverseDirection dir) (specPaths spec') 
+    in case ( Map.lookup (from, dir) (specPaths spec')
+            , Map.lookup (to, reverseDirection dir) (specPaths spec')
             ) of
       (Nothing, _) -> False
       (_, Nothing) -> False
-      (Just p1, Just p2) -> pathTo p1 == Just to && 
-                            pathKey p1 == Just itm && 
-                            pathTo p2 == Nothing 
+      (Just p1, Just p2) -> pathTo p1 == Just to &&
+                            pathKey p1 == Just itm &&
+                            pathTo p2 == Nothing

@@ -31,7 +31,7 @@ module ManyWorlds.WorldBuilder
     -- * World solver
     solveWorld,
     SolveResult (..),
-    StuckState (..)
+    StuckState (..),
   )
 where
 
@@ -39,7 +39,7 @@ import Control.Monad.State
 import qualified Data.Map as Map
 import Data.Text (Text)
 import ManyWorlds.Internal
-import ManyWorlds.Types
+import ManyWorlds.InternalTypes
 import ManyWorlds.WorldSolver
 
 {- If we go with map generation
