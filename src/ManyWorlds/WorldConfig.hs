@@ -26,7 +26,7 @@ import qualified Data.Map as M
 import Data.Text (Text)
 import qualified Data.Text as T
 import ManyWorlds.Internal
-import ManyWorlds.Types
+import ManyWorlds.InternalTypes
 import Prelude hiding (unlines)
 
 -- | Returns the default configuration for a world.

@@ -26,20 +26,19 @@ module ManyWorlds.WorldBuilder
     -- * WorldBuilder Run functions
     buildWorld,
     buildWorld',
-    emptySpec,
 
     -- * World solver
     solveWorld,
     SolveResult (..),
-    StuckState (..)
+    StuckState (..),
   )
 where
 
 import Control.Monad.State
-import qualified Data.Map as Map
+import qualified Data.Map as M
 import Data.Text (Text)
 import ManyWorlds.Internal
-import ManyWorlds.Types
+import ManyWorlds.InternalTypes
 import ManyWorlds.WorldSolver
 
 {- If we go with map generation
@@ -80,16 +79,6 @@ buildWorld' builder = World spec initialState
     initialState = PlayerState {currentRoom = startRoomId, heldItems = []}
     (startRoomId, spec) = runState builder emptySpec
 
--- | Helper for creating an empty world spec
-emptySpec :: WorldSpec
-emptySpec =
-  WorldSpec
-    { specRooms = Map.empty,
-      specItems = [],
-      specPaths = Map.empty,
-      specEndConditions = Map.empty
-    }
-
 -- | Declares a new item and adds it to the world.
 item ::
   -- | The name of the item
@@ -115,7 +104,7 @@ room r d itms = modify addRoom >> return rmid
   where
     rmid = RoomId r
     rmdat = RoomData {roomDesc = d, roomItems = itms}
-    addRoom s = s {specRooms = Map.insert rmid rmdat $ specRooms s}
+    addRoom s = s {specRooms = M.insert rmid rmdat $ specRooms s}
 
 -- | Convenience declaration for a room with no items.
 emptyRoom ::
@@ -218,7 +207,7 @@ endRoomWithItems rm itms = addCondition (EnterRoomWith rm itms)
 addCondition :: EndCondition -> Text -> WorldBuilder ()
 addCondition ec desc =
   modify
-    (\s -> s {specEndConditions = Map.insert ec desc (specEndConditions s)})
+    (\s -> s {specEndConditions = M.insert ec desc (specEndConditions s)})
 
 -- | Helper for adding a path to the world builder
 addPath ::
@@ -232,7 +221,7 @@ addPath a d b k = modify addPath'
     addPath' s =
       let newPath = Path {pathTo = b, pathKey = k}
           oldPaths = specPaths s
-       in s {specPaths = Map.insert (a, d) newPath oldPaths}
+       in s {specPaths = M.insert (a, d) newPath oldPaths}
 
 -- | Helper for adding a blocked path
 addBlockedPath :: RoomId -> Direction -> WorldBuilder ()
