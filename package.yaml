@@ -27,6 +27,7 @@ dependencies:
 
 default-extensions:
 - OverloadedStrings
+- LambdaCase
 
 ghc-options:
 - -Wall
@@ -63,7 +64,9 @@ executables:
 tests:
   many-worlds-test:
     main:                Spec.hs
-    source-dirs:         test
+    source-dirs:
+    - test
+    - src
     ghc-options:
     - -threaded
     - -rtsopts
@@ -71,3 +74,6 @@ tests:
     dependencies:
     - many-worlds
     - QuickCheck
+    other-modules:
+    - ManyWorlds.Types
+    - ManyWorlds.Internal
