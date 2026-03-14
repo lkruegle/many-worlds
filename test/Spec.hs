@@ -1,6 +1,6 @@
 import Test.QuickCheck
 
-import Control.Monad.State (State, execState)
+import Control.Monad.State (put, execState, runState)
 import Control.Monad (void)
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -24,6 +24,7 @@ main = do
   quickCheck prop_correctLockedPath
   quickCheck prop_correctSlide
   quickCheck prop_correctLockedSlide
+  quickCheck prop_staySolvable
 
 -- ======================= --
 -- Helper functions --
@@ -37,6 +38,9 @@ instance Arbitrary Direction where
 
 getRoomIds :: Map.Map RoomId RoomData -> [RoomId]
 getRoomIds = Map.keys
+
+addIf :: Bool -> [a] -> [a]
+addIf cond ls = if cond then ls else []
 
 -- ======================= --
 -- API generators --
@@ -155,8 +159,6 @@ apiFunctionGen spec = frequency $ independent ++ dependent
               , (2, lockedSlideGen spec)
               ]
       ]
-    addIf :: Bool -> [a] -> [a]
-    addIf cond ls = if cond then ls else []
 
 returnGen :: WorldBuilder () -> WorldSpec -> Gen (WorldBuilder RoomId)
 returnGen wb spec = case getRoomIds (specRooms spec) of
@@ -183,13 +185,19 @@ worldBuilderGen = sized $ \depth -> nestFunctions depth (return ()) emptySpec
     (wb', spec') <- apiFunctionGen spec
     nestFunctions (d-1) (wb >> wb') spec'
 
--- | Generate a WorldSpec with at least 2 rooms and 1 item
-worldSpecFilledGen :: Gen WorldSpec
-worldSpecFilledGen = worldSpecGen `suchThat` \spec -> 
-  length (getRoomIds (specRooms spec)) > 1 && length (specItems spec) > 0
+solvableWorldSpecGen :: Gen (RoomId, WorldSpec)
+solvableWorldSpecGen = resize 20 worldSpecGen `suchThat` \(startRoom, spec) ->
+  case snd (buildWorld (put spec >> return startRoom)) of
+    Unsolvable _  -> False
+    _ -> True
 
-worldSpecGen :: Gen WorldSpec
-worldSpecGen = (\wb -> execState wb emptySpec) <$> worldBuilderGen
+-- | Generate a WorldSpec with at least 2 rooms and 1 item
+worldSpecFilledGen :: Gen (RoomId, WorldSpec)
+worldSpecFilledGen = worldSpecGen `suchThat` \(startRoom, spec) -> 
+  length (getRoomIds (specRooms spec)) > 1 && not (null (specItems spec))
+
+worldSpecGen :: Gen (RoomId, WorldSpec)
+worldSpecGen = (\wb -> runState wb emptySpec) <$> worldBuilderGen
 
 {- Generated Example (with readable RoomIds):
   World (
@@ -266,7 +274,7 @@ Should invalidate World:
 
 -- | Check whether Map size of specRooms increases correctly 
 prop_addRoomToSpec :: Property
-prop_addRoomToSpec = forAll worldSpecGen $ \spec -> do
+prop_addRoomToSpec = forAll worldSpecGen $ \(_, spec) -> do
   let txt = pack "test"
       before = Map.size (specRooms spec)
       spec' = execState (emptyRoom txt txt) spec
@@ -277,7 +285,7 @@ prop_addRoomToSpec = forAll worldSpecGen $ \spec -> do
 
 -- | Check whether length of specItems increases correctly
 prop_addItemToSpec :: Property
-prop_addItemToSpec = forAll worldSpecGen $ \spec -> do
+prop_addItemToSpec = forAll worldSpecGen $ \(_, spec) -> do
   let txt = pack "test"
       before = length (specItems spec)
       spec' = execState (item txt) spec
@@ -288,7 +296,7 @@ prop_addItemToSpec = forAll worldSpecGen $ \spec -> do
 
 -- | Check that all paths use existing RoomIds (TODO by construction in Generator?)
 prop_pathsUseExistingRooms :: Property
-prop_pathsUseExistingRooms = forAll worldSpecGen $ \spec ->
+prop_pathsUseExistingRooms = forAll worldSpecGen $ \(_, spec) ->
   let existingRooms = Map.keys (specRooms spec)
       pathToRooms = [ to | p <- Map.elems (specPaths spec), Just to <- [pathTo p]]
       pathFromRooms = [ from | (from, _) <- Map.keys (specPaths spec)]
@@ -296,7 +304,7 @@ prop_pathsUseExistingRooms = forAll worldSpecGen $ \spec ->
 
 -- | Check that a path adds correct open connections
 prop_correctPath :: Property
-prop_correctPath = forAll worldSpecFilledGen $ \spec ->
+prop_correctPath = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
         (from, to) = case roomIds of
@@ -315,7 +323,7 @@ prop_correctPath = forAll worldSpecFilledGen $ \spec ->
 
 -- | Check that a path adds correct locked connections
 prop_correctLockedPath :: Property
-prop_correctLockedPath = forAll worldSpecFilledGen $ \spec ->
+prop_correctLockedPath = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
         (from, to) = case roomIds of
@@ -337,7 +345,7 @@ prop_correctLockedPath = forAll worldSpecFilledGen $ \spec ->
 
 -- | Check that correct open path and blocked path are added
 prop_correctSlide :: Property
-prop_correctSlide = forAll worldSpecFilledGen $ \spec ->
+prop_correctSlide = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
         (from, to) = case roomIds of
@@ -355,7 +363,7 @@ prop_correctSlide = forAll worldSpecFilledGen $ \spec ->
 
 -- | Check that correct locked path and blocked path are added
 prop_correctLockedSlide :: Property
-prop_correctLockedSlide = forAll worldSpecFilledGen $ \spec ->
+prop_correctLockedSlide = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
         (from, to) = case roomIds of
@@ -373,3 +381,29 @@ prop_correctLockedSlide = forAll worldSpecFilledGen $ \spec ->
       (Just p1, Just p2) -> pathTo p1 == Just to && 
                             pathKey p1 == Just itm && 
                             pathTo p2 == Nothing 
+
+-- | Checks that certain API function cannot invalidate a solvable world
+-- (room, emptyRoom, item, path, endconditions)
+prop_staySolvable :: Property
+prop_staySolvable = forAll solvableWorldSpecGen $ \(start,spec) ->
+  forAll (oneof (invariantApiGen spec)) $ \spec' ->
+    let extended = do
+                    put spec'
+                    return start
+    in case snd (buildWorld extended) of
+      Unsolvable _ -> False
+      _ -> True
+  where
+    invariantApiGen spec = concat 
+      [ [ snd <$> itemGen spec, snd <$> emptyRoomGen spec ],
+        addIf (not (null (specItems spec))) -- if items exist
+              [ snd <$> endItemsGen spec
+              ],
+        addIf (length (getRoomIds (specRooms spec)) > 1) -- if at least 2 rooms exist
+              [ snd <$> pathGen spec ]
+              ,
+        addIf (not (null (getRoomIds (specRooms spec)))) -- if rooms exist
+              [ snd <$> endRoomGen spec ],
+        addIf (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec))) -- rooms and items exist
+              [ snd <$> endRoomWithItemsGen spec ]
+      ]
