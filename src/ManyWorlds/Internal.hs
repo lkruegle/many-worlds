@@ -12,10 +12,10 @@ import ManyWorlds.InternalTypes
 emptySpec :: WorldSpec
 emptySpec =
   WorldSpec
-    { specRooms = Map.empty,
+    { specRooms = M.empty,
       specItems = [],
-      specPaths = Map.empty,
-      specEndConditions = Map.empty
+      specPaths = M.empty,
+      specEndConditions = M.empty
     }
 
 -- | Updates the world with the result of taking action.
