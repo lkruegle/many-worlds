@@ -74,13 +74,16 @@ describeAction' action = do
 -- | Creates text describing moving from the room in that direction
 moveText :: RoomId -> Direction -> WorldM Text
 moveText room direction = do
-  world <- ask
-  let (World spec _) = world
-  let key = case M.lookup (room, direction) (specPaths spec) of
-        Just path -> pathKey path
-        Nothing -> error $ "Inalid key: " <> show (room, direction)
+  world@(World spec _) <- ask
+  let path = case M.lookup (room, direction) (specPaths spec) of
+        Just p -> p
+        Nothing -> error $ "Invalid path: " <> show (room, direction)
+  let key = pathKey path
+  let text = case pathTo path of
+        Just _ -> "You go " <> T.show direction <> "."
+        Nothing -> "The path is blocked. You can't go that direction."
   let moveTexts =
-        ["You go " <> (T.show direction) <> ".", currentRoomDesc world]
+        [text, currentRoomDesc world]
   return $ unlines $ case key of
     Just (ItemId name) ->
       ( ("The " <> name <> " unlocked the door!") : moveTexts
