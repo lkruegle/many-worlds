@@ -315,7 +315,10 @@ worldSpecGen = (\wb -> runState wb emptySpec) <$> worldBuilderGen
 -- API properties --
 -- ======================= --
 
--- | Check whether Map size of specRooms increases correctly
+-- | Adding a room to a WorldSpec can behave in two ways:
+--
+-- - the given roomId already exists -> length of specRooms does not change
+-- - the given roomId is new -> length of specRooms increases by 1 
 prop_addRoomToSpec :: Property
 prop_addRoomToSpec = forAll worldSpecGen $ \(_, spec) -> do
   let txt = pack "test"
@@ -326,18 +329,19 @@ prop_addRoomToSpec = forAll worldSpecGen $ \(_, spec) -> do
     then before === after
     else (before + 1) === after
 
--- | Check whether length of specItems increases correctly
+-- | Adding an item to a WorldSpec increases the length of specItems by 1
 prop_addItemToSpec :: Property
 prop_addItemToSpec = forAll worldSpecGen $ \(_, spec) -> do
   let txt = pack "test"
       before = length (specItems spec)
       spec' = execState (item txt) spec
       after = length (specItems spec')
-  if ItemId txt `elem` specItems spec
-    then before === after
-    else (before + 1) === after
+  (before + 1) === after
 
--- | Check that all paths use existing RoomIds (TODO by construction in Generator?)
+-- | A new path can only connect rooms that exist in specRooms
+-- 
+-- Note: With the current generator this property is true by construction,
+-- but could become an interesting property for possible extensions
 prop_pathsUseExistingRooms :: Property
 prop_pathsUseExistingRooms = forAll worldSpecGen $ \(_, spec) ->
   let existingRooms = Map.keys (specRooms spec)
@@ -345,7 +349,10 @@ prop_pathsUseExistingRooms = forAll worldSpecGen $ \(_, spec) ->
       pathFromRooms = [ from | (from, _) <- Map.keys (specPaths spec)]
   in all (`elem` existingRooms) (pathToRooms ++ pathFromRooms)
 
--- | Check that a path adds correct open connections
+-- | A new path adds a bidirectional connection between 2 rooms
+-- that is not locked by any keys (items)
+--
+-- Uses worldSpecFilledGen to ensure reasonable test cases
 prop_correctPath :: Property
 prop_correctPath = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
@@ -364,7 +371,10 @@ prop_correctPath = forAll worldSpecFilledGen $ \(_, spec) ->
                             pathTo p2 == Just from &&
                             pathKey p2 == Nothing
 
--- | Check that a path adds correct locked connections
+-- | A new locked path adds a bidirectional connection between 2 rooms
+-- that is locked by the same key (item) in both directions
+--
+-- Uses worldSpecFilledGen to ensure reasonable test cases
 prop_correctLockedPath :: Property
 prop_correctLockedPath = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
@@ -386,7 +396,11 @@ prop_correctLockedPath = forAll worldSpecFilledGen $ \(_, spec) ->
                             pathTo p2 == Just from &&
                             pathKey p2 == Just itm
 
--- | Check that correct open path and blocked path are added
+-- | A new slide adds a unidirectional connection between 2 rooms
+-- that is not locked by any keys (items).
+-- The non-existing direction is indicated by a blocked path
+--
+-- Uses worldSpecFilledGen to ensure reasonable test cases
 prop_correctSlide :: Property
 prop_correctSlide = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
@@ -404,7 +418,11 @@ prop_correctSlide = forAll worldSpecFilledGen $ \(_, spec) ->
                             pathKey p1 == Nothing &&
                             pathTo p2 == Nothing
 
--- | Check that correct locked path and blocked path are added
+-- | A new locked slide adds a unidirectional connection between 2 rooms
+-- that is locked by a key (item).
+-- The non-existing direction is indicated by a blocked path
+--
+-- Uses worldSpecFilledGen to ensure reasonable test cases
 prop_correctLockedSlide :: Property
 prop_correctLockedSlide = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
@@ -425,8 +443,15 @@ prop_correctLockedSlide = forAll worldSpecFilledGen $ \(_, spec) ->
                             pathKey p1 == Just itm && 
                             pathTo p2 == Nothing 
 
--- | Checks that certain API function cannot invalidate a solvable world
--- (room, emptyRoom, item, path, endconditions)
+-- | Adding the following calls to API functions to a solvable WorldSpec
+-- should not make it unsolvable:
+--
+-- - adding a new item (items for end conditions still have sam availablility)
+-- - adding new end conditions (does not alter the fulfillable end conditions)
+-- - adding new open path (will never block/lock any existing routes)
+--
+-- All other API functions can cause unsolvable WorldSpecs 
+-- (Note: existing rooms can be overwritten by new rooms with differen items!)
 prop_staySolvable :: Property
 prop_staySolvable = forAll solvableWorldSpecGen $ \(start,spec) ->
   forAll (oneof (invariantApiGen spec)) $ \spec' ->
@@ -438,20 +463,27 @@ prop_staySolvable = forAll solvableWorldSpecGen $ \(start,spec) ->
       _ -> True
   where
     invariantApiGen spec = concat 
-      [ [ snd <$> itemGen spec, snd <$> emptyRoomGen spec ],
-        addIf (not (null (specItems spec))) -- if items exist
+      [ [ snd <$> itemGen spec ],
+        addIf (not (null (specItems spec)))
               [ snd <$> endItemsGen spec
               ],
-        addIf (length (getRoomIds (specRooms spec)) > 1) -- if at least 2 rooms exist
+        addIf (length (getRoomIds (specRooms spec)) > 1)
               [ snd <$> pathGen spec ]
               ,
-        addIf (not (null (getRoomIds (specRooms spec)))) -- if rooms exist
+        addIf (not (null (getRoomIds (specRooms spec))))
               [ snd <$> endRoomGen spec ],
-        addIf (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec))) -- rooms and items exist
+        addIf (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec)))s
               [ snd <$> endRoomWithItemsGen spec ]
       ]
 
--- | Check that adding a trivial solution for any EndCondition to an unsolvable World makes it solvable 
+-- | Given an unsolvable WorldSpec that includes any end conditions
+-- there is always a way to make it solvable by making any one of
+-- the existings end conditions fulfillable by:
+--
+-- - adding path from start to an end room
+-- - adding all necessary items to the start room
+--
+-- The solver must be able to  find that trivially added solution.
 prop_makeSolvable :: Property
 prop_makeSolvable = forAll unsolvableWorldSpecGen $ \(start@(RoomId startId),spec) ->
   let endCond = case Map.keys (specEndConditions spec) of
