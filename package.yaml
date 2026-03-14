@@ -48,6 +48,8 @@ library:
     - ManyWorlds.WorldBuilder
     - ManyWorlds.WorldRunner
     - ManyWorlds.WorldConfig
+    - ManyWorlds.Types
+    - ManyWorlds.Internal
 
 executables:
   many-worlds-exe:
@@ -66,7 +68,6 @@ tests:
     main:                Spec.hs
     source-dirs:
     - test
-    - src
     ghc-options:
     - -threaded
     - -rtsopts
@@ -74,6 +75,3 @@ tests:
     dependencies:
     - many-worlds
     - QuickCheck
-    other-modules:
-    - ManyWorlds.Types
-    - ManyWorlds.Internal

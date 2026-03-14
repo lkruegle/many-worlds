@@ -29,9 +29,9 @@ library
       ManyWorlds.WorldBuilder
       ManyWorlds.WorldRunner
       ManyWorlds.WorldConfig
-  other-modules:
-      ManyWorlds.Internal
       ManyWorlds.Types
+      ManyWorlds.Internal
+  other-modules:
       ManyWorlds.WorldSolver
       Paths_many_worlds
   autogen-modules:
@@ -74,11 +74,11 @@ test-suite many-worlds-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      ManyWorlds.Types
-      ManyWorlds.Internal
+      Paths_many_worlds
+  autogen-modules:
+      Paths_many_worlds
   hs-source-dirs:
       test
-      src
   default-extensions:
       OverloadedStrings
       LambdaCase
