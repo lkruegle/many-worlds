@@ -1,5 +1,6 @@
 import Control.Monad.State (execState, put)
 import qualified Data.Map as Map
+import Data.Maybe
 import Data.Text (pack)
 import Generators
 import ManyWorlds.Internal
@@ -81,9 +82,9 @@ prop_correctPath = forAll worldSpecFilledGen $ \(_, spec) ->
           (_, Nothing) -> False
           (Just p1, Just p2) ->
             pathTo p1 == Just to
-              && pathKey p1 == Nothing
+              && isNothing (pathKey p1)
               && pathTo p2 == Just from
-              && pathKey p2 == Nothing
+              && isNothing (pathKey p2)
 
 -- | A new locked path adds a bidirectional connection between 2 rooms
 -- that is locked by the same key (item) in both directions
@@ -131,8 +132,8 @@ prop_correctSlide = forAll worldSpecFilledGen $ \(_, spec) ->
           (_, Nothing) -> False
           (Just p1, Just p2) ->
             pathTo p1 == Just to
-              && pathKey p1 == Nothing
-              && pathTo p2 == Nothing
+              && isNothing (pathKey p1)
+              && isNothing (pathTo p2)
 
 -- | A new locked slide adds a unidirectional connection between 2 rooms
 -- that is locked by a key (item).
@@ -158,7 +159,7 @@ prop_correctLockedSlide = forAll worldSpecFilledGen $ \(_, spec) ->
           (Just p1, Just p2) ->
             pathTo p1 == Just to
               && pathKey p1 == Just itm
-              && pathTo p2 == Nothing
+              && isNothing (pathTo p2)
 
 -- | Adding the following calls to API functions to a solvable WorldSpec
 -- should not make it unsolvable:

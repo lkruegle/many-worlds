@@ -280,7 +280,7 @@ worldSpecFilledGen =
 -- This Generator is used by all other WorldSpec Generators
 -- in combination with QuickCheck's `suchThat` to filter for specific WorldSpecs
 worldSpecGen :: Gen (RoomId, WorldSpec)
-worldSpecGen = (\wb -> runState wb emptySpec) <$> worldBuilderGen
+worldSpecGen = (`runState` emptySpec) <$> worldBuilderGen
 
 {- Generated Example (with readable RoomIds):
   World (
