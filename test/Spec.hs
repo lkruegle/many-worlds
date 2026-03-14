@@ -10,6 +10,7 @@ import ManyWorlds.InternalTypes
 import ManyWorlds.WorldBuilder
 import ManyWorlds.WorldRunner
 import ManyWorlds.Internal
+import Test.QuickCheck (Property)
 
 -- ======================= --
 -- Main --
@@ -25,6 +26,7 @@ main = do
   quickCheck prop_correctSlide
   quickCheck prop_correctLockedSlide
   quickCheck prop_staySolvable
+  quickCheck prop_makeSolvable
 
 -- ======================= --
 -- Helper functions --
@@ -190,6 +192,12 @@ solvableWorldSpecGen = resize 20 worldSpecGen `suchThat` \(startRoom, spec) ->
   case snd (buildWorld (put spec >> return startRoom)) of
     Unsolvable _  -> False
     _ -> True
+
+unsolvableWorldSpecGen :: Gen (RoomId, WorldSpec)
+unsolvableWorldSpecGen = resize 20 worldSpecGen `suchThat` \(startRoom, spec) ->
+  case snd (buildWorld (put spec >> return startRoom)) of
+    Unsolvable _  -> not (null ((specEndConditions spec))) -- unsolvable but with EndConditions
+    _ -> False
 
 -- | Generate a WorldSpec with at least 2 rooms and 1 item
 worldSpecFilledGen :: Gen (RoomId, WorldSpec)
@@ -407,3 +415,31 @@ prop_staySolvable = forAll solvableWorldSpecGen $ \(start,spec) ->
         addIf (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec))) -- rooms and items exist
               [ snd <$> endRoomWithItemsGen spec ]
       ]
+
+-- | Check that adding a trivial solution for any EndCondition to an unsolvable World makes it solvable 
+prop_makeSolvable :: Property
+prop_makeSolvable = forAll unsolvableWorldSpecGen $ \(start@(RoomId startId),spec) ->
+  let endCond = case Map.keys (specEndConditions spec) of
+                  (x:_) -> x
+                  [] -> error "unsolvableWorldSpecGen guarantuees at least 1 EndCondition"
+  in case endCond of
+    EnterRoom end -> let extended = do
+                                      put spec
+                                      path start North end
+                                      return start
+                     in case snd (buildWorld extended) of
+                          Unsolvable _ -> False
+                          _ -> True
+    HoldItems itms -> let extended = do
+                                      put spec
+                                      room startId (pack "start") itms
+                      in case snd (buildWorld extended) of
+                          Unsolvable _ -> False
+                          _ -> True
+    EnterRoomWith end itms -> let extended = do
+                                              put spec
+                                              path start North end
+                                              room startId (pack "start") itms
+                              in case snd (buildWorld extended) of
+                                  Unsolvable _ -> False
+                                  _ -> True
