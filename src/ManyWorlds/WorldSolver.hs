@@ -19,7 +19,7 @@ import ManyWorlds.InternalTypes
 -- probe of the solver that does not find an end state generates a stuck state.
 solveWorld :: World -> SolveResult
 solveWorld w = case breadthFirstSolve (S.singleton w) [(w, [])] of
-  ([], []) -> error "Shouldn't be possible"
+  ([], []) -> Unsolvable [] -- Empty worlds are unsolvable
   ([], stucks) -> Unsolvable stucks
   ((_, path) : _, []) -> Solvable path
   ((_, path) : _, stucks) -> Partial path stucks
