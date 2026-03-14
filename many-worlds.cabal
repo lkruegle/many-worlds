@@ -73,6 +73,7 @@ test-suite many-worlds-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Generators
       Paths_many_worlds
   autogen-modules:
       Paths_many_worlds
