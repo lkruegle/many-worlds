@@ -8,7 +8,7 @@ where
 import Data.Maybe
 import qualified Data.Set as S
 import ManyWorlds.Internal
-import ManyWorlds.Types
+import ManyWorlds.InternalTypes
 
 -- | Solves the given world providing a description of the result
 --

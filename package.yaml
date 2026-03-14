@@ -41,15 +41,13 @@ ghc-options:
 
 library:
   source-dirs: src
-  default-extensions:
-    - LambdaCase
   exposed-modules:
     - ManyWorlds
     - ManyWorlds.WorldBuilder
     - ManyWorlds.WorldRunner
     - ManyWorlds.WorldConfig
-    - ManyWorlds.Types
     - ManyWorlds.Internal
+    - ManyWorlds.InternalTypes
 
 executables:
   many-worlds-exe:
@@ -66,8 +64,7 @@ executables:
 tests:
   many-worlds-test:
     main:                Spec.hs
-    source-dirs:
-    - test
+    source-dirs:         test
     ghc-options:
     - -threaded
     - -rtsopts
