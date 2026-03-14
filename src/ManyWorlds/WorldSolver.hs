@@ -31,20 +31,35 @@ breadthFirstSolve ::
   [(World, [Action])] ->
   -- | Accumulator of solutions and stuck states
   ([(World, [Action])], [StuckState])
-breadthFirstSolve _ [] = ([], [])
+breadthFirstSolve _ [] = ([], []) -- Base case
 breadthFirstSolve visited ((world, path) : queue) =
   case checkEndConditions world of
     -- Reverse the path if returned as it is accumulated backwards
     Just _ -> ([(world, reverse path)], [])
+    -- Continue searching through the world-space
     Nothing -> case nextWorlds of
       [] ->
+        -- current world cannot progress, add a StuckState to the
+        -- result of continuing BFS.
+        -- TODO: Consider that the list of StuckStates will currently have an
+        -- entry for *every* path that doesn't lead to a solution without
+        -- backtracking. However, there are some paths that might exist in
+        -- visited already but could eventually reach a solution. i.e. this
+        -- will return "false positive" StuckStates.
         let (solves, stucks) = breadthFirstSolve visited queue
          in (solves, stuckType world : stucks)
       _ ->
+        -- Add nextWorlds to the visited set, push to back of the queue
+        -- And keep searching.
         let visited' = foldr (S.insert . fst) visited nextWorlds
          in breadthFirstSolve visited' (queue ++ nextWorlds)
   where
+    -- Create a list of alternate worlds that represent taking each of the
+    -- currently legal moves.
     worlds' = mapMaybe (\a -> fmap (a,) (takeAction world a)) (allActions world)
+    -- Create the next worlds to add to the queue based on worlds'. This
+    -- filters out worlds that are equivalent to previously visted worlds to
+    -- avoid backtracking.
     nextWorlds =
       [ (world', (action : path))
         | (action, world') <- worlds',
@@ -59,10 +74,7 @@ allActions world@(World _ state) = legalPickups ++ legalMoves
       Just k -> k `elem` inventory world
       _ -> True
     legalMoves =
-      [ Move (currentRoom state) d
-        | (d, p) <- currentPaths world,
-          canMove p
-      ]
+      [Move (currentRoom state) d | (d, p) <- currentPaths world, canMove p]
     legalPickups = [PickUp itm | itm <- currentRoomItems world]
 
 -- | Assuming the current World state is stuck, determine the cause.
