@@ -8,13 +8,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    container: haskell:9.10.3
     steps:
       - uses: actions/checkout@v4
-
-      - uses: haskell-actions/setup@v2
-        with:
-          ghc-version: '9.10.3'
-          cabal-version: 'latest'
 
       - name: Cache dependencies
         uses: actions/cache@v4
