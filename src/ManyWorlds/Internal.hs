@@ -31,7 +31,7 @@ takeAction world = \case
   where
     (World spec state) = world
     pickupItem item =
-      World spec (state {heldItems = (item : heldItems state)})
+      World spec (state {heldItems = item : heldItems state})
     takePath direction = World spec (state {currentRoom = newroom})
       where
         newroom = case pathTo (getPath world direction) of
@@ -56,6 +56,7 @@ allDirections = [North, South, East, West]
 -- taking another look at the design of World in order to rewrite these
 -- in a more consistent manner.
 
+-- | Gets the path heading in the direction based on the world state
 getPath :: World -> Direction -> Path
 getPath (World spec state) direction =
   case M.lookup lookupkey (specPaths spec) of
@@ -64,16 +65,19 @@ getPath (World spec state) direction =
   where
     lookupkey = (currentRoom state, direction)
 
+-- | Gets the description from the current world state
 currentRoomDesc :: World -> Text
 currentRoomDesc world = roomDesc $ currentRoomData world
 
+-- | Gets a list of all paths originating from the current room
 currentPaths :: World -> [(Direction, Path)]
 currentPaths (World spec state) = mapMaybe lookupDir allDirections
   where
     room = currentRoom state
     paths = specPaths spec
-    lookupDir dir = fmap (dir,) $ M.lookup (room, dir) paths
+    lookupDir dir = (dir,) <$> M.lookup (room, dir) paths
 
+-- | Gets the RoomData object for the current room
 currentRoomData :: World -> RoomData
 currentRoomData (World spec state) = case M.lookup roomid (specRooms spec) of
   Just roomdata -> roomdata
@@ -81,23 +85,27 @@ currentRoomData (World spec state) = case M.lookup roomid (specRooms spec) of
   where
     roomid = currentRoom state
 
+-- | Gets a list of items in the current room
 currentRoomItems :: World -> [ItemId]
 currentRoomItems world =
   [ item
     | item <- roomItems $ currentRoomData world,
-      item `notElem` (inventory world)
+      item `notElem` inventory world
   ]
 
+-- | Gets the player's inventory from the world
 inventory :: World -> [ItemId]
 inventory (World _ state) = heldItems state
 
+-- | Given a player state and end condition, returns True if the contiions is
+-- satisfied
 checkCondition :: PlayerState -> EndCondition -> Bool
 checkCondition state cond = case cond of
   HoldItems is -> allItemsHeld is
   EnterRoom r -> inRoom r
   EnterRoomWith r is -> inRoom r && allItemsHeld is
   where
-    inRoom room = room == (currentRoom state)
+    inRoom room = room == currentRoom state
     allItemsHeld items =
       let condItms = S.fromList items
           heldItms = S.fromList $ heldItems state

@@ -123,8 +123,8 @@ type WorldM a = ReaderT World IO a
 
 -- | Interface for custom UI.
 --
--- A default text interface is provided, but both feedback and action descriptions
--- can be overridden to custom functions.
+-- A default text interface is provided, but both feedback and action
+-- descriptions can be overridden to custom functions.
 data WorldConfig = WorldConfig
   { provideFeedback :: ActionFeedback -> WorldM Text,
     describeAction :: Action -> WorldM Text
