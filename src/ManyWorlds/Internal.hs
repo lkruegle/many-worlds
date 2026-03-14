@@ -31,7 +31,7 @@ takeAction world = \case
   where
     (World spec state) = world
     pickupItem item =
-      World spec (state {heldItems = (item : heldItems state)})
+      World spec (state {heldItems = item : heldItems state})
     takePath direction = World spec (state {currentRoom = newroom})
       where
         newroom = case pathTo (getPath world direction) of
@@ -72,7 +72,7 @@ currentPaths (World spec state) = mapMaybe lookupDir allDirections
   where
     room = currentRoom state
     paths = specPaths spec
-    lookupDir dir = fmap (dir,) $ M.lookup (room, dir) paths
+    lookupDir dir = (dir,) <$> M.lookup (room, dir) paths
 
 currentRoomData :: World -> RoomData
 currentRoomData (World spec state) = case M.lookup roomid (specRooms spec) of
@@ -85,7 +85,7 @@ currentRoomItems :: World -> [ItemId]
 currentRoomItems world =
   [ item
     | item <- roomItems $ currentRoomData world,
-      item `notElem` (inventory world)
+      item `notElem` inventory world
   ]
 
 inventory :: World -> [ItemId]
@@ -97,7 +97,7 @@ checkCondition state cond = case cond of
   EnterRoom r -> inRoom r
   EnterRoomWith r is -> inRoom r && allItemsHeld is
   where
-    inRoom room = room == (currentRoom state)
+    inRoom room = room == currentRoom state
     allItemsHeld items =
       let condItms = S.fromList items
           heldItms = S.fromList $ heldItems state

@@ -34,11 +34,11 @@ runWorld = runWorld' defaultConfig
 --
 -- See `runWorld` for more details.
 runWorld' :: WorldConfig -> World -> IO World
-runWorld' config initialworld = worldLoop Look initialworld
+runWorld' config = worldLoop Look
   where
     getFeedbackText = provideFeedback config
     worldLoop action world = do
-      storyText <- runReaderT (describeAction config $ action) world
+      storyText <- runReaderT (describeAction config action) world
       case checkEndConditions world of
         Just endText -> do
           printStory $ T.unlines [storyText, endText]
@@ -97,7 +97,7 @@ buildMove txt = do
     Nothing -> throwError $ NoSuchPath d
   case pathKey path of
     Just key ->
-      if key `elem` (heldItems state)
+      if key `elem` heldItems state
         then return ()
         else throwError $ PathLocked d key
     Nothing -> return ()

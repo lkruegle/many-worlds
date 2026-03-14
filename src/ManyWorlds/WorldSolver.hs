@@ -62,7 +62,7 @@ breadthFirstSolve visited ((world, path) : queue) =
     -- filters out worlds that are equivalent to previously visted worlds to
     -- avoid backtracking.
     nextWorlds =
-      [ (world', (action : path))
+      [ (world', action : path)
         | (action, world') <- worlds',
           world' `S.notMember` visited
       ]
