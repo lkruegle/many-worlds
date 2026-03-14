@@ -187,12 +187,16 @@ apiFunctionGen spec = frequency $ independent ++ dependent
             [ (1, endRoomGen spec)
             ],
           addIf
-            (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec)))
+            ( not (null (getRoomIds (specRooms spec)))
+                && not (null (specItems spec))
+            )
             -- if at least 1 room and 1 item exist
             [ (1, endRoomWithItemsGen spec)
             ],
           addIf
-            (length (getRoomIds (specRooms spec)) > 1 && not (null (specItems spec)))
+            ( length (getRoomIds (specRooms spec)) > 1
+                && not (null (specItems spec))
+            )
             -- if at least 2 rooms and 1 item exist
             [ (2, lockedPathGen spec),
               (2, lockedSlideGen spec)
@@ -227,11 +231,11 @@ returnGen wb spec = case getRoomIds (specRooms spec) of
 worldBuilderGen :: Gen (WorldBuilder RoomId)
 worldBuilderGen = sized $ \depth -> nestFunctions depth (return ()) emptySpec
   where
-    nestFunctions
-      :: Int
-      -> WorldBuilder ()
-      -> WorldSpec
-      -> Gen (WorldBuilder RoomId)
+    nestFunctions ::
+      Int ->
+      WorldBuilder () ->
+      WorldSpec ->
+      Gen (WorldBuilder RoomId)
     nestFunctions 0 wb spec = returnGen wb spec
     nestFunctions d wb spec = do
       (wb', spec') <- apiFunctionGen spec
