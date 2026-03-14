@@ -31,7 +31,7 @@ module ManyWorlds.WorldBuilder
     -- * World solver
     solveWorld,
     SolveResult (..),
-    StuckState (..)
+    StuckState (..),
   )
 where
 
