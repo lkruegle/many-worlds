@@ -8,6 +8,16 @@ import qualified Data.Set as S
 import Data.Text (Text)
 import ManyWorlds.InternalTypes
 
+-- | Helper for creating an empty world spec
+emptySpec :: WorldSpec
+emptySpec =
+  WorldSpec
+    { specRooms = M.empty,
+      specItems = [],
+      specPaths = M.empty,
+      specEndConditions = M.empty
+    }
+
 -- | Updates the world with the result of taking action.
 --
 -- This function assumes actions are well formed in the current world.
