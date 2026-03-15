@@ -2,12 +2,11 @@ import Control.Monad.State (execState, put)
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Text (pack)
-import qualified Data.Text.IO as TIO
 import Generators
 import ManyWorlds.Internal
 import ManyWorlds.InternalTypes
 import ManyWorlds.WorldBuilder
-import Test.Hspec
+import Test.Hspec (describe, hspec)
 import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 
