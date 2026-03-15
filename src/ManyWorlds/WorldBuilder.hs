@@ -5,7 +5,13 @@
 module ManyWorlds.WorldBuilder
   ( WorldBuilder,
 
-    -- * Data Types
+    -- * WorldBuilder Run functions
+    buildWorld,
+    buildWorld',
+    StuckState(..),
+    SolveResult(..),
+
+    -- * WorldBuilder Data Types
     ItemId (),
     RoomId (),
     Direction (..),
@@ -22,15 +28,6 @@ module ManyWorlds.WorldBuilder
     endRoom,
     endRoomWithItems,
     emptyRoom,
-
-    -- * WorldBuilder Run functions
-    buildWorld,
-    buildWorld',
-
-    -- * World solver
-    solveWorld,
-    SolveResult (..),
-    StuckState (..),
   )
 where
 
@@ -119,8 +116,10 @@ emptyRoom r d = room r d []
 -- @
 --
 -- creates two paths:
---  from --North--> to
---  to   --South--> from
+--
+-- * from --North--> to
+--
+-- * to   --South--> from
 --
 -- In this case, both the explicit and implicit paths are unlocked
 path ::
