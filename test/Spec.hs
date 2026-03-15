@@ -2,10 +2,13 @@ import Control.Monad.State (execState, put)
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Text (pack)
+import qualified Data.Text.IO as TIO
 import Generators
 import ManyWorlds.Internal
 import ManyWorlds.InternalTypes
 import ManyWorlds.WorldBuilder
+import Test.Hspec
+import Test.Hspec.QuickCheck (prop)
 import Test.QuickCheck
 
 -- ======================= --
@@ -14,16 +17,17 @@ import Test.QuickCheck
 
 -- | Test all QuickCheck properties
 main :: IO ()
-main = do
-  quickCheck prop_addRoomToSpec
-  quickCheck prop_addItemToSpec
-  quickCheck prop_pathsUseExistingRooms
-  quickCheck prop_correctPath
-  quickCheck prop_correctLockedPath
-  quickCheck prop_correctSlide
-  quickCheck prop_correctLockedSlide
-  quickCheck prop_staySolvable
-  quickCheck prop_makeSolvable
+main = hspec $ do
+  describe "ManyWorlds API" $ do
+    prop "prop_addRoomToSpec" prop_addRoomToSpec
+    prop "prop_addItemToSpec" prop_addItemToSpec
+    prop "prop_pathsUseExistingRooms" prop_pathsUseExistingRooms
+    prop "prop_correctPath" prop_correctPath
+    prop "prop_correctLockedPath" prop_correctLockedPath
+    prop "prop_correctSlide" prop_correctSlide
+    prop "prop_correctLockedSlide" prop_correctLockedSlide
+    prop "prop_staySolvable" prop_staySolvable
+    prop "prop_makeSolvable" prop_makeSolvable
 
 -- ======================= --
 -- API properties --
