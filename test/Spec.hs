@@ -63,7 +63,8 @@ prop_addItemToSpec = forAll worldSpecGen $ \(_, spec) -> do
 prop_pathsUseExistingRooms :: Property
 prop_pathsUseExistingRooms = forAll worldSpecGen $ \(_, spec) ->
   let existingRooms = Map.keys (specRooms spec)
-      pathToRooms = [to | p <- Map.elems (specPaths spec), Just to <- [pathTo p]]
+      pathToRooms =
+        [to | p <- Map.elems (specPaths spec), Just to <- [pathTo p]]
       pathFromRooms = [from | (from, _) <- Map.keys (specPaths spec)]
    in all (`elem` existingRooms) (pathToRooms ++ pathFromRooms)
 
