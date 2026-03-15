@@ -28,6 +28,7 @@ dependencies:
 default-extensions:
 - OverloadedStrings
 - LambdaCase
+- TupleSections
 
 ghc-options:
 - -Wall
@@ -46,6 +47,7 @@ library:
     - ManyWorlds.WorldBuilder
     - ManyWorlds.WorldRunner
     - ManyWorlds.WorldConfig
+    - ManyWorlds.WorldSolver
     - ManyWorlds.Internal
     - ManyWorlds.InternalTypes
 

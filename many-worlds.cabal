@@ -29,10 +29,10 @@ library
       ManyWorlds.WorldBuilder
       ManyWorlds.WorldRunner
       ManyWorlds.WorldConfig
+      ManyWorlds.WorldSolver
       ManyWorlds.Internal
       ManyWorlds.InternalTypes
   other-modules:
-      ManyWorlds.WorldSolver
       Paths_many_worlds
   autogen-modules:
       Paths_many_worlds
@@ -41,6 +41,7 @@ library
   default-extensions:
       OverloadedStrings
       LambdaCase
+      TupleSections
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
@@ -60,6 +61,7 @@ executable many-worlds-exe
   default-extensions:
       OverloadedStrings
       LambdaCase
+      TupleSections
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
@@ -82,6 +84,7 @@ test-suite many-worlds-test
   default-extensions:
       OverloadedStrings
       LambdaCase
+      TupleSections
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck

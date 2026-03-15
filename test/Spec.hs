@@ -27,6 +27,7 @@ main = hspec $ do
     prop "prop_correctSlide" prop_correctSlide
     prop "prop_correctLockedSlide" prop_correctLockedSlide
     prop "prop_staySolvable" prop_staySolvable
+    prop "prop_makeNotUnsolvable" prop_makeNotUnsolvable
     prop "prop_makeSolvable" prop_makeSolvable
 
 -- ======================= --
@@ -63,7 +64,8 @@ prop_addItemToSpec = forAll worldSpecGen $ \(_, spec) -> do
 prop_pathsUseExistingRooms :: Property
 prop_pathsUseExistingRooms = forAll worldSpecGen $ \(_, spec) ->
   let existingRooms = Map.keys (specRooms spec)
-      pathToRooms = [to | p <- Map.elems (specPaths spec), Just to <- [pathTo p]]
+      pathToRooms =
+        [to | p <- Map.elems (specPaths spec), Just to <- [pathTo p]]
       pathFromRooms = [from | (from, _) <- Map.keys (specPaths spec)]
    in all (`elem` existingRooms) (pathToRooms ++ pathFromRooms)
 
@@ -194,7 +196,9 @@ prop_staySolvable = forAll solvableWorldSpecGen $ \(start, spec) ->
             (not (null (getRoomIds (specRooms spec))))
             [snd <$> endRoomGen spec],
           addIf
-            (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec)))
+            ( not (null (getRoomIds (specRooms spec)))
+                && not (null (specItems spec))
+            )
             [snd <$> endRoomWithItemsGen spec]
         ]
 
@@ -206,32 +210,51 @@ prop_staySolvable = forAll solvableWorldSpecGen $ \(start, spec) ->
 -- - adding all necessary items to the start room
 --
 -- The solver must be able to  find that trivially added solution.
+prop_makeNotUnsolvable :: Property
+prop_makeNotUnsolvable =
+  forAll unsolvableWorldSpecGen $ \(start@(RoomId startId), spec) ->
+    let endCond = case Map.keys (specEndConditions spec) of
+          (x : _) -> x
+          [] ->
+            error "unsolvableWorldSpecGen guarantuees at least 1 EndCondition"
+        (_, spec') = addTrivialSolution (start, spec) endCond
+     in case snd $ buildWorld $ toWorldBuilder spec' start of
+          Unsolvable _ -> False
+          _ -> True
+
+-- | Given a partially solvable WorldSpec that includes any end conditions
+-- there is always a way to make it solvable by adding trivial solutions to all
+-- end conditions fulfillable by:
+--
+-- - adding path from start to an end room
+-- - adding all necessary items to the start room
+--
+-- The solver must be able to find that trivially added solution.
 prop_makeSolvable :: Property
-prop_makeSolvable = forAll unsolvableWorldSpecGen $ \(start@(RoomId startId), spec) ->
-  let endCond = case Map.keys (specEndConditions spec) of
-        (x : _) -> x
-        [] -> error "unsolvableWorldSpecGen guarantuees at least 1 EndCondition"
-   in case endCond of
-        EnterRoom end ->
-          let extended = do
-                put spec
-                path start North end
-                return start
-           in case snd (buildWorld extended) of
-                Unsolvable _ -> False
-                _ -> True
-        HoldItems itms ->
-          let extended = do
-                put spec
-                room startId (pack "start") itms
-           in case snd (buildWorld extended) of
-                Unsolvable _ -> False
-                _ -> True
+prop_makeSolvable =
+  forAll unsolvableWorldSpecGen $ \(start@(RoomId startId), spec) ->
+    let spec' =
+          snd $
+            foldl
+              addTrivialSolution
+              (start, spec)
+              (Map.keys $ specEndConditions spec)
+     in case snd $ buildWorld $ toWorldBuilder spec' start of
+          Solvable _ -> True
+          _ -> False
+
+addTrivialSolution :: (RoomId, WorldSpec) -> EndCondition -> (RoomId, WorldSpec)
+addTrivialSolution (start@(RoomId startId), spec) cond =
+  let spec' = case cond of
+        EnterRoom end -> execState (path start North end) spec
+        HoldItems itms -> execState (room startId (pack "start") itms) spec
         EnterRoomWith end itms ->
-          let extended = do
-                put spec
-                path start North end
-                room startId (pack "start") itms
-           in case snd (buildWorld extended) of
-                Unsolvable _ -> False
-                _ -> True
+          execState
+            (path start North end >> room startId (pack "start") itms)
+            spec
+   in (start, spec')
+
+toWorldBuilder :: WorldSpec -> RoomId -> WorldBuilder RoomId
+toWorldBuilder spec start = do
+  put spec
+  return start

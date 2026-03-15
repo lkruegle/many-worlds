@@ -5,7 +5,13 @@
 module ManyWorlds.WorldBuilder
   ( WorldBuilder,
 
-    -- * Data Types
+    -- * WorldBuilder Run functions
+    buildWorld,
+    buildWorld',
+    StuckState(..),
+    SolveResult(..),
+
+    -- * WorldBuilder Data Types
     ItemId (),
     RoomId (),
     Direction (..),
@@ -22,15 +28,6 @@ module ManyWorlds.WorldBuilder
     endRoom,
     endRoomWithItems,
     emptyRoom,
-
-    -- * WorldBuilder Run functions
-    buildWorld,
-    buildWorld',
-
-    -- * World solver
-    solveWorld,
-    SolveResult (..),
-    StuckState (..),
   )
 where
 
@@ -40,14 +37,6 @@ import Data.Text (Text)
 import ManyWorlds.Internal
 import ManyWorlds.InternalTypes
 import ManyWorlds.WorldSolver
-
-{- If we go with map generation
- - Properties check (World a)
- -  - The map generated is connected (no rooms unreachable)
- -  - The map is winnable
- -  - Triviality checker: If all paths found by a single DFS pass
- -      with no backtracking are winning paths, the game is trivial
- -}
 
 -- | Creates a playable World from the world builder.
 --
@@ -117,6 +106,22 @@ emptyRoom ::
 emptyRoom r d = room r d []
 
 -- | Declares a bidirectional path with no item lock between two rooms.
+--
+-- This declares a path leading out of the "from" room in the given direction
+-- to the "to" room, and implicitly adds a path from the "to" room to the "from"
+-- room in the opposite direction. i.e.:
+--
+-- @
+-- path from North to
+-- @
+--
+-- creates two paths:
+--
+-- * from --North--> to
+--
+-- * to   --South--> from
+--
+-- In this case, both the explicit and implicit paths are unlocked
 path ::
   -- | The "from" room id
   RoomId ->
@@ -131,6 +136,9 @@ path a d b = do
 
 -- | Creates a bidirectional path locked by the given item between the two
 -- rooms.
+--
+-- Behavior is the same as `path` except that both explicit and implicit paths
+-- are locked.
 lockedPath ::
   -- | The "from" room id
   RoomId ->
@@ -146,6 +154,10 @@ lockedPath a d b k = do
   addPath b (reverseDirection d) (Just a) (Just k)
 
 -- | Adds a unidirectional path, blocking the way back.
+--
+-- Similar to `path` except that the implicit path's destination is nothing.
+-- This means that the player "sees" a path in that direction but is unable to
+-- take it.
 slide ::
   -- | The "from" room id
   RoomId ->
@@ -159,6 +171,8 @@ slide a d b = do
   addBlockedPath b (reverseDirection d)
 
 -- | Adds a unidirectional path locked with an item, blocking the way back.
+--
+-- Same as `slide` but the explicit path is locked.
 lockedSlide ::
   -- | The "from" room id
   RoomId ->

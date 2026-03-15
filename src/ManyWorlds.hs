@@ -19,9 +19,11 @@ module ManyWorlds
   ( module ManyWorlds.WorldBuilder,
     module ManyWorlds.WorldRunner,
     module ManyWorlds.WorldConfig,
+    module ManyWorlds.WorldSolver,
   )
 where
 
 import ManyWorlds.WorldBuilder
 import ManyWorlds.WorldConfig
 import ManyWorlds.WorldRunner
+import ManyWorlds.WorldSolver

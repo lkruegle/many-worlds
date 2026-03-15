@@ -264,6 +264,14 @@ unsolvableWorldSpecGen =
       Unsolvable _ -> not (null (specEndConditions spec))
       _ -> False
 
+partiallySolvableWorldSpecGen :: Gen (RoomId, WorldSpec)
+partiallySolvableWorldSpecGen =
+  resize 20 worldSpecGen `suchThat` \(startRoom, spec) ->
+    case snd (buildWorld (put spec >> return startRoom)) of
+      -- unsolvable but with EndConditions
+      Partial _ _ -> not (null (specEndConditions spec))
+      _ -> False
+
 -- | Generates a WorldSpec with at least 2 rooms and 1 item and
 -- a RoomId representing a start room
 worldSpecFilledGen :: Gen (RoomId, WorldSpec)

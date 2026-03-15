@@ -1,7 +1,8 @@
-{-# LANGUAGE TupleSections #-}
-
 module ManyWorlds.WorldSolver
-  ( solveWorld,
+  ( -- * World solver
+    solveWorld,
+    SolveResult (..),
+    StuckState (..),
   )
 where
 
@@ -15,8 +16,7 @@ import ManyWorlds.InternalTypes
 -- Attempts to find a solution and returns that solution if one is found.
 --
 -- If the world is not solvable or partially solvable, all stuck states found
--- are returned. This means that some stuck states may be redundant as every
--- probe of the solver that does not find an end state generates a stuck state.
+-- are returned. A stuck state indicates where the solver got stuck and why.
 solveWorld :: World -> SolveResult
 solveWorld w = case breadthFirstSolve (S.singleton w) [(w, [])] of
   -- Empty worlds are unsolvable, this shouldn't really be possible though
@@ -34,54 +34,60 @@ breadthFirstSolve ::
   ([(World, [Action])], [StuckState])
 breadthFirstSolve _ [] = ([], []) -- Base case
 breadthFirstSolve visited ((world, path) : queue) =
-  case checkEndConditions world of
-    -- Reverse the path if returned as it is accumulated backwards
-    Just _ -> ([(world, reverse path)], [])
-    -- Continue searching through the world-space
-    Nothing -> case nextWorlds of
-      [] ->
-        -- current world cannot progress, add a StuckState to the
-        -- result of continuing BFS.
-        -- TODO: Consider that the list of StuckStates will currently have an
-        -- entry for *every* path that doesn't lead to a solution without
-        -- backtracking. However, there are some paths that might exist in
-        -- visited already but could eventually reach a solution. i.e. this
-        -- will return "false positive" StuckStates.
-        let (solves, stucks) = breadthFirstSolve visited queue
-         in (solves, stuckType world : stucks)
-      _ ->
-        -- Add nextWorlds to the visited set, push to back of the queue
-        -- And keep searching.
-        let visited' = foldr (S.insert . fst) visited nextWorlds
-         in breadthFirstSolve visited' (queue ++ nextWorlds)
-  where
-    -- Create a list of alternate worlds that represent taking each of the
-    -- currently legal moves.
-    worlds' = mapMaybe (\a -> fmap (a,) (takeAction world a)) (allActions world)
-    -- Create the next worlds to add to the queue based on worlds'. This
-    -- filters out worlds that are equivalent to previously visted worlds to
-    -- avoid backtracking.
-    nextWorlds =
-      [ (world', action : path)
-        | (action, world') <- worlds',
-          world' `S.notMember` visited
-      ]
+  let pickups = legalPickups world
+      -- Pickup all Items in the current room
+      pickupWorld =
+        foldl (\w a -> fromMaybe w (takeAction w a)) world pickups
+      -- Add the pickups to the path
+      path' = (reverse pickups) ++ path
+      -- List of all possible moves from current world
+      actedWorlds =
+        mapMaybe (\a -> fmap (a,) (takeAction pickupWorld a)) (legalMoves pickupWorld)
+      -- Creates the next set of searchable world/path tuples
+      searchNext =
+        [ (w, a : path')
+          | (a, w) <- actedWorlds,
+            w `S.notMember` visited
+        ]
+   in case checkEndConditions pickupWorld of
+        -- Reverse the path if returned as it is accumulated backwards
+        Just _ -> ([(world, reverse path')], [])
+        -- Continue searching through the world-space
+        Nothing -> case searchNext of
+          [] ->
+            -- current world cannot progress, add a StuckState to the
+            -- result of continuing BFS.
+            let (solves, stucks) = breadthFirstSolve visited queue
+             in case stuckType world of
+                  Just stuck -> (solves, stuck : stucks)
+                  Nothing -> (solves, stucks)
+          _ ->
+            -- Add searchNext to the visited set, push to back of the queue
+            -- And keep searching.
+            let visited' = foldr (S.insert . fst) visited searchNext
+             in breadthFirstSolve visited' (queue ++ searchNext)
 
 -- | Gets all possible valid actions that can be taken in the current world.
-allActions :: World -> [Action]
-allActions world@(World _ state) = legalPickups ++ legalMoves
+legalMoves :: World -> [Action]
+legalMoves world@(World _ state) =
+  [Move (currentRoom state) d | (d, p) <- currentPaths world, canMove p]
   where
-    canMove p = case pathKey p of
+    canMove p = notLocked p && notBlocked p
+    notBlocked p = isJust $ pathTo p
+    notLocked p = case pathKey p of
       Just k -> k `elem` inventory world
       _ -> True
-    legalMoves =
-      [Move (currentRoom state) d | (d, p) <- currentPaths world, canMove p]
-    legalPickups = [PickUp itm | itm <- currentRoomItems world]
 
--- | Assuming the current World state is stuck, determine the cause.
-stuckType :: World -> StuckState
-stuckType w@(World _ state) = case currentPaths w of
-  [] -> NoPath room
-  paths -> NeedItems room $ mapMaybe pathKey [p | (_, p) <- paths]
+legalPickups :: World -> [Action]
+legalPickups world = [PickUp itm | itm <- currentRoomItems world]
+
+-- | Check if the world is actually stuck or just a previously visited state.
+stuckType :: World -> Maybe StuckState
+stuckType w@(World _ state) = case actualPaths of
+  [] -> Just $ NoPath room
+  paths -> case mapMaybe pathKey paths of
+    [] -> Nothing
+    itms -> Just $ NeedItems room itms
   where
+    actualPaths = [p | (_, p) <- currentPaths w, isJust $ pathTo p]
     room = currentRoom state
