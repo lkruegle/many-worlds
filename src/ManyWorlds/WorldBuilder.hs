@@ -41,14 +41,6 @@ import ManyWorlds.Internal
 import ManyWorlds.InternalTypes
 import ManyWorlds.WorldSolver
 
-{- If we go with map generation
- - Properties check (World a)
- -  - The map generated is connected (no rooms unreachable)
- -  - The map is winnable
- -  - Triviality checker: If all paths found by a single DFS pass
- -      with no backtracking are winning paths, the game is trivial
- -}
-
 -- | Creates a playable World from the world builder.
 --
 -- This function returns both a built world and a result indicating whether the
