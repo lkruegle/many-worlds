@@ -1,4 +1,3 @@
-{-# LANGUAGE TupleSections #-}
 
 module ManyWorlds.WorldSolver
   ( solveWorld,
