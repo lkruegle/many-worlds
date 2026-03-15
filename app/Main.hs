@@ -25,6 +25,7 @@ world = do
   key <- item "rusty key"
   cloth <- item "dirty cloth"
   rope <- item "grimy rope"
+  potion <- item "vial of mysterious green liquid"
   dungeon <-
     room
       "dungeon"
@@ -42,7 +43,7 @@ world = do
     room
       "worseDungeon"
       "An abandoned workshop. You see the remnants of experiments strewn about."
-      [key]
+      [key, cloth, potion]
   stair <-
     emptyRoom
       "stair"
@@ -60,7 +61,7 @@ world = do
   lockedSlide dungeon West worseDungeon rope
   path worseDungeon South stair
   -- dungeon' uses the fact that each path is really 2 paths to allow
-  -- discovery of new rooms to change the room you came from
+  -- discovery of new rooms to replace a room you previously visited
   path stair West dungeon'
   lockedPath dungeon' North outside key
   lockedSlide dungeon' West worseDungeon rope
