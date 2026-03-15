@@ -1,15 +1,13 @@
 module Generators where
 
-import Test.QuickCheck
-
-import Control.Monad.State (put, execState, runState)
 import Control.Monad (void)
+import Control.Monad.State (execState, put, runState)
 import qualified Data.Map as Map
 import Data.Text (Text, pack)
-
+import ManyWorlds.Internal
 import ManyWorlds.InternalTypes
 import ManyWorlds.WorldBuilder
-import ManyWorlds.Internal
+import Test.QuickCheck
 
 -- ======================= --
 -- Helper functions --
@@ -36,7 +34,7 @@ addIf cond ls = if cond then ls else []
 -- API generators --
 -- ======================= --
 
--- | Type alias for functions that change a WorldSpec 
+-- | Type alias for functions that change a WorldSpec
 -- according to the result of an API function call
 --
 -- The returned Generator always returns a WorldBuilder with a unit type
@@ -45,7 +43,7 @@ addIf cond ls = if cond then ls else []
 type ApiGen = WorldSpec -> Gen (WorldBuilder (), WorldSpec)
 
 -- | Generator to add an Item to a WorldSpec
--- 
+--
 -- Calls the API function `item` with an arbitrary id text
 -- The item might be a dupiicate of a previous
 itemGen :: ApiGen
@@ -55,7 +53,7 @@ itemGen spec = do
   return (wb, execState wb spec)
 
 -- | Generator to add an empty room to a WorldSpec
--- 
+--
 -- Calls the API function `emptyRoom` with an arbitrary id text
 emptyRoomGen :: ApiGen
 emptyRoomGen spec = do
@@ -64,7 +62,7 @@ emptyRoomGen spec = do
   return (wb, execState wb spec)
 
 -- | Generator to add a room containing items to a WorldSpec
--- 
+--
 -- Calls the API function `room` with an arbitrary id text and
 -- an arbitrary sublist of items available in the given WorldSpec.
 roomGen :: ApiGen
@@ -75,19 +73,19 @@ roomGen spec = do
   return (wb, execState wb spec)
 
 -- | Helper generator that retirns 2 different random room ids that are
--- available in the given WorldSpec and an arbitrary Direction. 
--- 
--- Handles the common parameters need for path types 
+-- available in the given WorldSpec and an arbitrary Direction.
+--
+-- Handles the common parameters need for path types
 genBasicPath :: WorldSpec -> Gen (RoomId, Direction, RoomId)
 genBasicPath spec = do
   let rooms = getRoomIds (specRooms spec)
   from <- elements rooms
-  dir  <- arbitrary
-  to   <- elements (filter (/= from) rooms)
+  dir <- arbitrary
+  to <- elements (filter (/= from) rooms)
   return (from, dir, to)
 
 -- | Generator to add an open path to a WorldSpec
--- 
+--
 -- Calls the API function `path` and uses genBasicPath
 pathGen :: ApiGen
 pathGen spec = do
@@ -96,7 +94,7 @@ pathGen spec = do
   return (wb, execState wb spec)
 
 -- | Generator to add an open slide to a WorldSpec
--- 
+--
 -- Calls the API function `slide` and uses genBasicPath
 slideGen :: ApiGen
 slideGen spec = do
@@ -105,7 +103,7 @@ slideGen spec = do
   return (wb, execState wb spec)
 
 -- | Generator to add a path that is locked by a key (item) to a WorldSpec
--- 
+--
 -- Calls the API function `lockedPath` and uses genBasicPath
 -- and chooses random element from the available item list the WorldSpec.
 lockedPathGen :: ApiGen
@@ -116,7 +114,7 @@ lockedPathGen spec = do
   return (wb, execState wb spec)
 
 -- | Generator to add a path that is locked by a key (item) to a WorldSpec
--- 
+--
 -- Calls the API function `lockedSlide` and uses genBasicPath
 -- and chooses random element from the available item list the WorldSpec.
 lockedSlideGen :: ApiGen
@@ -127,7 +125,7 @@ lockedSlideGen spec = do
   return (wb, execState wb spec)
 
 -- | Generator to add a list of items as an end condition
--- 
+--
 -- Calls the API function `endItems` and gives it an arbitrary
 -- sublist of the items available in the given WorldSpec
 endItemsGen :: ApiGen
@@ -137,7 +135,7 @@ endItemsGen spec = do
   return (wb, execState wb spec)
 
 -- | Generator to add a room as an end condition
--- 
+--
 -- Calls the API function `endRoom` and gives it an arbitrary
 -- room id available in the given WorldSpec
 endRoomGen :: ApiGen
@@ -147,7 +145,7 @@ endRoomGen spec = do
   return (wb, execState wb spec)
 
 -- | Generator to add a room and a list of items as an end condition
--- 
+--
 -- Calls the API function `endRoomWithItems` and gives it an arbitrary room id
 -- and an arbitrary sublist of the items available in the given WorldSpec
 endRoomWithItemsGen :: ApiGen
@@ -166,34 +164,40 @@ apiFunctionGen spec = frequency $ independent ++ dependent
   where
     independent =
       -- no conditions need to be met to se these functions
-      [ (3, itemGen spec)
-      , (1, emptyRoomGen spec)
+      [ (3, itemGen spec),
+        (1, emptyRoomGen spec)
       ]
-    dependent = concat
-      [ addIf (not (null (specItems spec)))
-              -- if at least 1 item exists
-              [ (3, roomGen spec)
-              , (1, endItemsGen spec)
-              ],
-        addIf (length (getRoomIds (specRooms spec)) > 1)
-              -- if at least 2 rooms exist
-              [ (2, pathGen spec)
-              , (2, slideGen spec)
-              ],
-        addIf (not (null (getRoomIds (specRooms spec)))) 
-              -- if at least 1 room exists
-              [(1, endRoomGen spec)
-              ],
-        addIf (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec)))
-              -- if at least 1 room and 1 item exist
-              [(1, endRoomWithItemsGen spec)
-              ],
-        addIf (length (getRoomIds (specRooms spec)) > 1 && not (null (specItems spec)))
-              -- if at least 2 rooms and 1 item exist
-              [ (2, lockedPathGen spec)
-              , (2, lockedSlideGen spec)
-              ]
-      ]
+    dependent =
+      concat
+        [ addIf
+            (not (null (specItems spec)))
+            -- if at least 1 item exists
+            [ (3, roomGen spec),
+              (1, endItemsGen spec)
+            ],
+          addIf
+            (length (getRoomIds (specRooms spec)) > 1)
+            -- if at least 2 rooms exist
+            [ (2, pathGen spec),
+              (2, slideGen spec)
+            ],
+          addIf
+            (not (null (getRoomIds (specRooms spec))))
+            -- if at least 1 room exists
+            [ (1, endRoomGen spec)
+            ],
+          addIf
+            (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec)))
+            -- if at least 1 room and 1 item exist
+            [ (1, endRoomWithItemsGen spec)
+            ],
+          addIf
+            (length (getRoomIds (specRooms spec)) > 1 && not (null (specItems spec)))
+            -- if at least 2 rooms and 1 item exist
+            [ (2, lockedPathGen spec),
+              (2, lockedSlideGen spec)
+            ]
+        ]
 
 -- | Generate a return call returning the id of a start room
 --
@@ -223,44 +227,47 @@ returnGen wb spec = case getRoomIds (specRooms spec) of
 worldBuilderGen :: Gen (WorldBuilder RoomId)
 worldBuilderGen = sized $ \depth -> nestFunctions depth (return ()) emptySpec
   where
-  nestFunctions :: Int -> WorldBuilder () -> WorldSpec -> Gen (WorldBuilder RoomId)
-  nestFunctions 0 wb spec = returnGen wb spec
-  nestFunctions d wb spec = do
-    (wb', spec') <- apiFunctionGen spec
-    nestFunctions (d-1) (wb >> wb') spec'
+    nestFunctions :: Int -> WorldBuilder () -> WorldSpec -> Gen (WorldBuilder RoomId)
+    nestFunctions 0 wb spec = returnGen wb spec
+    nestFunctions d wb spec = do
+      (wb', spec') <- apiFunctionGen spec
+      nestFunctions (d - 1) (wb >> wb') spec'
 
 -- | Generates a WorldSpec and a RoomId representing a start room
 -- that is guaranteed to be (partially) solvable when given to buildWorld
 --
 -- Uses `resize` to avoid explosions in size of the generated WorldSpecs
 solvableWorldSpecGen :: Gen (RoomId, WorldSpec)
-solvableWorldSpecGen = resize 20 worldSpecGen `suchThat` \(startRoom, spec) ->
-  case snd (buildWorld (put spec >> return startRoom)) of
-    Unsolvable _  -> False
-    _ -> True
+solvableWorldSpecGen =
+  resize 20 worldSpecGen `suchThat` \(startRoom, spec) ->
+    case snd (buildWorld (put spec >> return startRoom)) of
+      Unsolvable _ -> False
+      _ -> True
 
 -- | Generates a WorldSpec and a RoomId representing a start room
 -- that is guaranteed to be unsolvable when given to buildWorld
 --
 -- Uses `resize` to avoid explosions in size of the generated WorldSpecs
 unsolvableWorldSpecGen :: Gen (RoomId, WorldSpec)
-unsolvableWorldSpecGen = resize 20 worldSpecGen `suchThat` \(startRoom, spec) ->
-  case snd (buildWorld (put spec >> return startRoom)) of
-    Unsolvable _  -> not (null (specEndConditions spec)) -- unsolvable but with EndConditions
-    _ -> False
+unsolvableWorldSpecGen =
+  resize 20 worldSpecGen `suchThat` \(startRoom, spec) ->
+    case snd (buildWorld (put spec >> return startRoom)) of
+      Unsolvable _ -> not (null (specEndConditions spec)) -- unsolvable but with EndConditions
+      _ -> False
 
 -- | Generates a WorldSpec with at least 2 rooms and 1 item and
 -- a RoomId representing a start room
 worldSpecFilledGen :: Gen (RoomId, WorldSpec)
-worldSpecFilledGen = worldSpecGen `suchThat` \(startRoom, spec) -> 
-  length (getRoomIds (specRooms spec)) > 1 && not (null (specItems spec))
+worldSpecFilledGen =
+  worldSpecGen `suchThat` \(startRoom, spec) ->
+    length (getRoomIds (specRooms spec)) > 1 && not (null (specItems spec))
 
 -- | Generates a WorldSpec and a RoomId representing a start room
 --
 -- The type is not an actual WorldBuilder to be able to use it
 -- with QuickCheck's "forAll", which needs the return type to be an instance of Show
 --
--- This Generator is used by all other WorldSpec Generators 
+-- This Generator is used by all other WorldSpec Generators
 -- in combination with QuickCheck's `suchThat` to filter for specific WorldSpecs
 worldSpecGen :: Gen (RoomId, WorldSpec)
 worldSpecGen = (\wb -> runState wb emptySpec) <$> worldBuilderGen
@@ -293,4 +300,3 @@ worldSpecGen = (\wb -> runState wb emptySpec) <$> worldBuilderGen
         (EnterRoom (RoomId "4"),"u\DC1")]})
     (PlayerState {currentRoom = RoomId "2", heldItems = []})
 -}
-

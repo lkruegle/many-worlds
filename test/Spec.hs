@@ -1,14 +1,14 @@
-import Test.QuickCheck
-
-import Control.Monad.State (put, execState)
+import Control.Monad.State (execState, put)
 import qualified Data.Map as Map
 import Data.Text (pack)
-
+import qualified Data.Text.IO as TIO
+import Generators
+import ManyWorlds.Internal
 import ManyWorlds.InternalTypes
 import ManyWorlds.WorldBuilder
-import ManyWorlds.Internal
-
-import Generators
+import Test.Hspec
+import Test.Hspec.QuickCheck (prop)
+import Test.QuickCheck
 
 -- ======================= --
 -- Main --
@@ -16,16 +16,17 @@ import Generators
 
 -- | Test all QuickCheck properties
 main :: IO ()
-main = do
-  quickCheck prop_addRoomToSpec
-  quickCheck prop_addItemToSpec
-  quickCheck prop_pathsUseExistingRooms
-  quickCheck prop_correctPath
-  quickCheck prop_correctLockedPath
-  quickCheck prop_correctSlide
-  quickCheck prop_correctLockedSlide
-  quickCheck prop_staySolvable
-  quickCheck prop_makeSolvable
+main = hspec $ do
+  describe "ManyWorlds API" $ do
+    prop "prop_addRoomToSpec" prop_addRoomToSpec
+    prop "prop_addItemToSpec" prop_addItemToSpec
+    prop "prop_pathsUseExistingRooms" prop_pathsUseExistingRooms
+    prop "prop_correctPath" prop_correctPath
+    prop "prop_correctLockedPath" prop_correctLockedPath
+    prop "prop_correctSlide" prop_correctSlide
+    prop "prop_correctLockedSlide" prop_correctLockedSlide
+    prop "prop_staySolvable" prop_staySolvable
+    prop "prop_makeSolvable" prop_makeSolvable
 
 -- ======================= --
 -- API properties --
@@ -34,7 +35,7 @@ main = do
 -- | Adding a room to a WorldSpec can behave in two ways:
 --
 -- - the given roomId already exists -> length of specRooms does not change
--- - the given roomId is new -> length of specRooms increases by 1 
+-- - the given roomId is new -> length of specRooms increases by 1
 prop_addRoomToSpec :: Property
 prop_addRoomToSpec = forAll worldSpecGen $ \(_, spec) -> do
   let txt = pack "test"
@@ -55,15 +56,15 @@ prop_addItemToSpec = forAll worldSpecGen $ \(_, spec) -> do
   (before + 1) === after
 
 -- | A new path can only connect rooms that exist in specRooms
--- 
+--
 -- Note: With the current generator this property is true by construction,
 -- but could become an interesting property for possible extensions
 prop_pathsUseExistingRooms :: Property
 prop_pathsUseExistingRooms = forAll worldSpecGen $ \(_, spec) ->
   let existingRooms = Map.keys (specRooms spec)
-      pathToRooms = [ to | p <- Map.elems (specPaths spec), Just to <- [pathTo p]]
-      pathFromRooms = [ from | (from, _) <- Map.keys (specPaths spec)]
-  in all (`elem` existingRooms) (pathToRooms ++ pathFromRooms)
+      pathToRooms = [to | p <- Map.elems (specPaths spec), Just to <- [pathTo p]]
+      pathFromRooms = [from | (from, _) <- Map.keys (specPaths spec)]
+   in all (`elem` existingRooms) (pathToRooms ++ pathFromRooms)
 
 -- | A new path adds a bidirectional connection between 2 rooms
 -- that is not locked by any keys (items)
@@ -74,18 +75,19 @@ prop_correctPath = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
         (from, to) = case roomIds of
-                      (x:y:_) -> (x,y)
-                      _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
+          (x : y : _) -> (x, y)
+          _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
         spec' = execState (path from dir to) spec
-    in case ( Map.lookup (from, dir) (specPaths spec')
-            , Map.lookup (to, reverseDirection dir) (specPaths spec')
-            ) of
-      (Nothing, _) -> False
-      (_, Nothing) -> False
-      (Just p1, Just p2) -> pathTo p1 == Just to &&
-                            pathKey p1 == Nothing &&
-                            pathTo p2 == Just from &&
-                            pathKey p2 == Nothing
+     in case ( Map.lookup (from, dir) (specPaths spec'),
+               Map.lookup (to, reverseDirection dir) (specPaths spec')
+             ) of
+          (Nothing, _) -> False
+          (_, Nothing) -> False
+          (Just p1, Just p2) ->
+            pathTo p1 == Just to
+              && pathKey p1 == Nothing
+              && pathTo p2 == Just from
+              && pathKey p2 == Nothing
 
 -- | A new locked path adds a bidirectional connection between 2 rooms
 -- that is locked by the same key (item) in both directions
@@ -96,21 +98,22 @@ prop_correctLockedPath = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
         (from, to) = case roomIds of
-                      (x:y:_) -> (x,y)
-                      _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
+          (x : y : _) -> (x, y)
+          _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
         itm = case specItems spec of
-                (x:_) -> x
-                _ -> error "worldSpecFilledGen guarantees at least 1 item"
+          (x : _) -> x
+          _ -> error "worldSpecFilledGen guarantees at least 1 item"
         spec' = execState (lockedPath from dir to itm) spec
-    in case ( Map.lookup (from, dir) (specPaths spec')
-            , Map.lookup (to, reverseDirection dir) (specPaths spec')
-            ) of
-      (Nothing, _) -> False
-      (_, Nothing) -> False
-      (Just p1, Just p2) -> pathTo p1 == Just to &&
-                            pathKey p1 == Just itm &&
-                            pathTo p2 == Just from &&
-                            pathKey p2 == Just itm
+     in case ( Map.lookup (from, dir) (specPaths spec'),
+               Map.lookup (to, reverseDirection dir) (specPaths spec')
+             ) of
+          (Nothing, _) -> False
+          (_, Nothing) -> False
+          (Just p1, Just p2) ->
+            pathTo p1 == Just to
+              && pathKey p1 == Just itm
+              && pathTo p2 == Just from
+              && pathKey p2 == Just itm
 
 -- | A new slide adds a unidirectional connection between 2 rooms
 -- that is not locked by any keys (items).
@@ -122,17 +125,18 @@ prop_correctSlide = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
         (from, to) = case roomIds of
-                      (x:y:_) -> (x,y)
-                      _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
+          (x : y : _) -> (x, y)
+          _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
         spec' = execState (slide from dir to) spec
-    in case ( Map.lookup (from, dir) (specPaths spec')
-            , Map.lookup (to, reverseDirection dir) (specPaths spec')
-            ) of
-      (Nothing, _) -> False
-      (_, Nothing) -> False
-      (Just p1, Just p2) -> pathTo p1 == Just to &&
-                            pathKey p1 == Nothing &&
-                            pathTo p2 == Nothing
+     in case ( Map.lookup (from, dir) (specPaths spec'),
+               Map.lookup (to, reverseDirection dir) (specPaths spec')
+             ) of
+          (Nothing, _) -> False
+          (_, Nothing) -> False
+          (Just p1, Just p2) ->
+            pathTo p1 == Just to
+              && pathKey p1 == Nothing
+              && pathTo p2 == Nothing
 
 -- | A new locked slide adds a unidirectional connection between 2 rooms
 -- that is locked by a key (item).
@@ -144,20 +148,21 @@ prop_correctLockedSlide = forAll worldSpecFilledGen $ \(_, spec) ->
   forAll arbitrary $ \dir ->
     let roomIds = getRoomIds (specRooms spec)
         (from, to) = case roomIds of
-                      (x:y:_) -> (x,y)
-                      _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
+          (x : y : _) -> (x, y)
+          _ -> error "worldSpecFilledGen guarantees at least 2 rooms"
         itm = case specItems spec of
-                (x:_) -> x
-                _ -> error "worldSpecFilledGen guarantees at least 1 item"
+          (x : _) -> x
+          _ -> error "worldSpecFilledGen guarantees at least 1 item"
         spec' = execState (lockedSlide from dir to itm) spec
-    in case ( Map.lookup (from, dir) (specPaths spec')
-            , Map.lookup (to, reverseDirection dir) (specPaths spec')
-            ) of
-      (Nothing, _) -> False
-      (_, Nothing) -> False
-      (Just p1, Just p2) -> pathTo p1 == Just to && 
-                            pathKey p1 == Just itm && 
-                            pathTo p2 == Nothing 
+     in case ( Map.lookup (from, dir) (specPaths spec'),
+               Map.lookup (to, reverseDirection dir) (specPaths spec')
+             ) of
+          (Nothing, _) -> False
+          (_, Nothing) -> False
+          (Just p1, Just p2) ->
+            pathTo p1 == Just to
+              && pathKey p1 == Just itm
+              && pathTo p2 == Nothing
 
 -- | Adding the following calls to API functions to a solvable WorldSpec
 -- should not make it unsolvable:
@@ -165,28 +170,32 @@ prop_correctLockedSlide = forAll worldSpecFilledGen $ \(_, spec) ->
 -- - adding a new item (items for end conditions still have sam availablility)
 -- - adding new end conditions (does not alter the fulfillable end conditions)
 --
--- All other API functions can cause unsolvable WorldSpecs 
+-- All other API functions can cause unsolvable WorldSpecs
 -- (Note: existing rooms can be overwritten by new rooms with different items!)
 prop_staySolvable :: Property
-prop_staySolvable = forAll solvableWorldSpecGen $ \(start,spec) ->
+prop_staySolvable = forAll solvableWorldSpecGen $ \(start, spec) ->
   forAll (oneof (invariantApiGen spec)) $ \spec' ->
     let extended = do
-                    put spec'
-                    return start
-    in case snd (buildWorld extended) of
-      Unsolvable _ -> False
-      _ -> True
+          put spec'
+          return start
+     in case snd (buildWorld extended) of
+          Unsolvable _ -> False
+          _ -> True
   where
-    invariantApiGen spec = concat 
-      [ [ snd <$> itemGen spec ],
-        addIf (not (null (specItems spec)))
-              [ snd <$> endItemsGen spec
-              ],
-        addIf (not (null (getRoomIds (specRooms spec))))
-              [ snd <$> endRoomGen spec ],
-        addIf (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec)))
-              [ snd <$> endRoomWithItemsGen spec ]
-      ]
+    invariantApiGen spec =
+      concat
+        [ [snd <$> itemGen spec],
+          addIf
+            (not (null (specItems spec)))
+            [ snd <$> endItemsGen spec
+            ],
+          addIf
+            (not (null (getRoomIds (specRooms spec))))
+            [snd <$> endRoomGen spec],
+          addIf
+            (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec)))
+            [snd <$> endRoomWithItemsGen spec]
+        ]
 
 -- | Given an unsolvable WorldSpec that includes any end conditions
 -- there is always a way to make it solvable by making any one of
@@ -197,28 +206,31 @@ prop_staySolvable = forAll solvableWorldSpecGen $ \(start,spec) ->
 --
 -- The solver must be able to  find that trivially added solution.
 prop_makeSolvable :: Property
-prop_makeSolvable = forAll unsolvableWorldSpecGen $ \(start@(RoomId startId),spec) ->
+prop_makeSolvable = forAll unsolvableWorldSpecGen $ \(start@(RoomId startId), spec) ->
   let endCond = case Map.keys (specEndConditions spec) of
-                  (x:_) -> x
-                  [] -> error "unsolvableWorldSpecGen guarantuees at least 1 EndCondition"
-  in case endCond of
-    EnterRoom end -> let extended = do
-                                      put spec
-                                      path start North end
-                                      return start
-                     in case snd (buildWorld extended) of
-                          Unsolvable _ -> False
-                          _ -> True
-    HoldItems itms -> let extended = do
-                                      put spec
-                                      room startId (pack "start") itms
-                      in case snd (buildWorld extended) of
-                          Unsolvable _ -> False
-                          _ -> True
-    EnterRoomWith end itms -> let extended = do
-                                              put spec
-                                              path start North end
-                                              room startId (pack "start") itms
-                              in case snd (buildWorld extended) of
-                                  Unsolvable _ -> False
-                                  _ -> True
+        (x : _) -> x
+        [] -> error "unsolvableWorldSpecGen guarantuees at least 1 EndCondition"
+   in case endCond of
+        EnterRoom end ->
+          let extended = do
+                put spec
+                path start North end
+                return start
+           in case snd (buildWorld extended) of
+                Unsolvable _ -> False
+                _ -> True
+        HoldItems itms ->
+          let extended = do
+                put spec
+                room startId (pack "start") itms
+           in case snd (buildWorld extended) of
+                Unsolvable _ -> False
+                _ -> True
+        EnterRoomWith end itms ->
+          let extended = do
+                put spec
+                path start North end
+                room startId (pack "start") itms
+           in case snd (buildWorld extended) of
+                Unsolvable _ -> False
+                _ -> True
