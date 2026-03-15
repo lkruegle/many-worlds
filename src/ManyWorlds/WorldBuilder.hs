@@ -8,8 +8,8 @@ module ManyWorlds.WorldBuilder
     -- * WorldBuilder Run functions
     buildWorld,
     buildWorld',
-    StuckState(..),
-    SolveResult(..),
+    StuckState (..),
+    SolveResult (..),
 
     -- * WorldBuilder Data Types
     ItemId (),
