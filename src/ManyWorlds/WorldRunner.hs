@@ -30,7 +30,7 @@ import System.IO (hFlush, stdout)
 runWorld :: World -> IO World
 runWorld = runWorld' defaultConfig
 
--- | World run function that allows you to provide a custom WorlConfig
+-- | World run function that allows you to provide a custom WorldConfig
 --
 -- See `runWorld` for more details.
 runWorld' :: WorldConfig -> World -> IO World
