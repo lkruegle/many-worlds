@@ -87,6 +87,8 @@ test-suite many-worlds-test
       QuickCheck
     , base >=4.7 && <5
     , containers
+    , hspec
+    , hspec-discover
     , many-worlds
     , mtl
     , text
