@@ -34,23 +34,24 @@ breadthFirstSolve ::
   ([(World, [Action])], [StuckState])
 breadthFirstSolve _ [] = ([], []) -- Base case
 breadthFirstSolve visited ((world, path) : queue) =
-  -- Pickup all Items in the current room
-  let pickupWorld =
-        foldl (\w a -> fromMaybe w (takeAction w a)) world (legalPickups world)
+  let pickups = legalPickups world
+      -- Pickup all Items in the current room
+      pickupWorld =
+        foldl (\w a -> fromMaybe w (takeAction w a)) world pickups
+      -- Add the pickups to the path
+      path' = (reverse pickups) ++ path
       -- List of all possible moves from current world
       actedWorlds =
         mapMaybe (\a -> fmap (a,) (takeAction pickupWorld a)) (legalMoves pickupWorld)
-      -- Create the next worlds to add to the queue based on worlds'. This
-      -- filters out worlds that are equivalent to previously visted worlds to
-      -- avoid backtracking.
+      -- Creates the next set of searchable world/path tuples
       searchNext =
-        [ (world', action : path)
-          | (action, world') <- actedWorlds,
-            world' `S.notMember` visited
+        [ (w, a : path')
+          | (a, w) <- actedWorlds,
+            w `S.notMember` visited
         ]
    in case checkEndConditions pickupWorld of
         -- Reverse the path if returned as it is accumulated backwards
-        Just _ -> ([(world, reverse path)], [])
+        Just _ -> ([(world, reverse path')], [])
         -- Continue searching through the world-space
         Nothing -> case searchNext of
           [] ->
