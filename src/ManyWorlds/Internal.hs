@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module ManyWorlds.Internal where
 
 import qualified Data.Map as M
