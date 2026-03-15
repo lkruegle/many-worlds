@@ -47,6 +47,7 @@ library:
     - ManyWorlds.WorldBuilder
     - ManyWorlds.WorldRunner
     - ManyWorlds.WorldConfig
+    - ManyWorlds.WorldSolver
     - ManyWorlds.Internal
     - ManyWorlds.InternalTypes
 

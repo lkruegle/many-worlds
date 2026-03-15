@@ -29,10 +29,10 @@ library
       ManyWorlds.WorldBuilder
       ManyWorlds.WorldRunner
       ManyWorlds.WorldConfig
+      ManyWorlds.WorldSolver
       ManyWorlds.Internal
       ManyWorlds.InternalTypes
   other-modules:
-      ManyWorlds.WorldSolver
       Paths_many_worlds
   autogen-modules:
       Paths_many_worlds

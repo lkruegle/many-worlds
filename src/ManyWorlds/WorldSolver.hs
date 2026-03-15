@@ -1,5 +1,8 @@
 module ManyWorlds.WorldSolver
-  ( solveWorld,
+  ( -- * World solver
+    solveWorld,
+    SolveResult (..),
+    StuckState (..),
   )
 where
 
