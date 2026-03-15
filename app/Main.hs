@@ -1,8 +1,8 @@
 module Main (main) where
 
-import ManyWorlds
 import qualified Data.Text as T
 import Data.Text.IO as TIO
+import ManyWorlds
 
 main :: IO World
 main = do
@@ -18,7 +18,6 @@ main = do
       print stucks
   runWorld w
 
-
 world :: WorldBuilder RoomId
 world = do
   key <- item "rusty key"
@@ -28,16 +27,18 @@ world = do
   dungeon <-
     room
       "dungeon"
-      (T.unwords [
-        "A dark, dank dungeon. There is a locked door through which you see a",
-        "sliver of light. There's also a crack in the floor that you might be",
-        "able to drop through. If only you had something to lower yourself",
-        "down with..."
-      ])
+      ( T.unwords
+          [ "A dark, dank dungeon. There is a locked door through which you",
+            "see a sliver of light. There's also a crack in the floor that you",
+            "might be able to drop through. If only you had something to lower",
+            "yourself down with..."
+          ]
+      )
       [rope]
   outside <-
     emptyRoom
-      "outside" "The sun glares down on you at the edge of a cliff face."
+      "outside"
+      "The sun glares down on you at the edge of a cliff face."
   worseDungeon <-
     room
       "worseDungeon"
@@ -50,12 +51,13 @@ world = do
   dungeon' <-
     emptyRoom
       "dungeon'"
-      (T.unwords [
-        "A dark, dank dungeon. There is a locked door through which you see a",
-        "sliver of light. There's also a crack in the floor that you might be",
-        "able to drop through. Strange that you didn't notice the stairs",
-        "before."
-      ])
+      ( T.unwords
+          [ "A dark, dank dungeon. There is a locked door through which you ",
+            "see a sliver of light. There's also a crack in the floor that you",
+            "might be able to drop through. Strange that you didn't notice the",
+            "stairs before."
+          ]
+      )
   lockedPath dungeon North outside key
   lockedSlide dungeon West worseDungeon rope
   path worseDungeon South stair
