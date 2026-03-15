@@ -187,12 +187,16 @@ apiFunctionGen spec = frequency $ independent ++ dependent
             [ (1, endRoomGen spec)
             ],
           addIf
-            (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec)))
+            ( not (null (getRoomIds (specRooms spec)))
+                && not (null (specItems spec))
+            )
             -- if at least 1 room and 1 item exist
             [ (1, endRoomWithItemsGen spec)
             ],
           addIf
-            (length (getRoomIds (specRooms spec)) > 1 && not (null (specItems spec)))
+            ( length (getRoomIds (specRooms spec)) > 1
+                && not (null (specItems spec))
+            )
             -- if at least 2 rooms and 1 item exist
             [ (2, lockedPathGen spec),
               (2, lockedSlideGen spec)
@@ -227,7 +231,11 @@ returnGen wb spec = case getRoomIds (specRooms spec) of
 worldBuilderGen :: Gen (WorldBuilder RoomId)
 worldBuilderGen = sized $ \depth -> nestFunctions depth (return ()) emptySpec
   where
-    nestFunctions :: Int -> WorldBuilder () -> WorldSpec -> Gen (WorldBuilder RoomId)
+    nestFunctions ::
+      Int ->
+      WorldBuilder () ->
+      WorldSpec ->
+      Gen (WorldBuilder RoomId)
     nestFunctions 0 wb spec = returnGen wb spec
     nestFunctions d wb spec = do
       (wb', spec') <- apiFunctionGen spec
@@ -252,7 +260,8 @@ unsolvableWorldSpecGen :: Gen (RoomId, WorldSpec)
 unsolvableWorldSpecGen =
   resize 20 worldSpecGen `suchThat` \(startRoom, spec) ->
     case snd (buildWorld (put spec >> return startRoom)) of
-      Unsolvable _ -> not (null (specEndConditions spec)) -- unsolvable but with EndConditions
+      -- unsolvable but with EndConditions
+      Unsolvable _ -> not (null (specEndConditions spec))
       _ -> False
 
 -- | Generates a WorldSpec with at least 2 rooms and 1 item and
@@ -265,12 +274,13 @@ worldSpecFilledGen =
 -- | Generates a WorldSpec and a RoomId representing a start room
 --
 -- The type is not an actual WorldBuilder to be able to use it
--- with QuickCheck's "forAll", which needs the return type to be an instance of Show
+-- with QuickCheck's "forAll", which needs the return type to be an instance of
+-- Show
 --
 -- This Generator is used by all other WorldSpec Generators
 -- in combination with QuickCheck's `suchThat` to filter for specific WorldSpecs
 worldSpecGen :: Gen (RoomId, WorldSpec)
-worldSpecGen = (\wb -> runState wb emptySpec) <$> worldBuilderGen
+worldSpecGen = (`runState` emptySpec) <$> worldBuilderGen
 
 {- Generated Example (with readable RoomIds):
   World (

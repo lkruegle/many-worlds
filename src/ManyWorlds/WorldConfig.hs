@@ -67,7 +67,7 @@ describeAction' action = do
     Look -> lookText
     Inventory -> return $ case inventory world of
       [] -> "Your inventory is empty!"
-      itms -> "In your inventory, you have a " <> (itemListText itms) <> ""
+      itms -> "In your inventory, you have a " <> itemListText itms <> ""
     Quit -> return "You quit."
     Help -> return helpText
 
@@ -86,8 +86,7 @@ moveText room direction = do
         [text, currentRoomDesc world]
   return $ unlines $ case key of
     Just (ItemId name) ->
-      ( ("The " <> name <> " unlocked the door!") : moveTexts
-      )
+      ("The " <> name <> " unlocked the door!") : moveTexts
     Nothing -> moveTexts
 
 -- | Creates text describing looking around in the current room
@@ -107,7 +106,7 @@ lookText = do
 directionListText :: [Direction] -> Text
 directionListText ds = case ds of
   [] -> "There's no way out!"
-  (d' : []) -> "There's a path to the " <> T.show d' <> "."
+  [d'] -> "There's a path to the " <> T.show d' <> "."
   (d' : ds') ->
     "There are paths to the "
       <> T.intercalate ", " [T.show d | d <- ds']
@@ -117,10 +116,9 @@ directionListText ds = case ds of
 -- | A generic list of items as text
 itemListText :: [ItemId] -> Text
 itemListText = \case
-  (itm : []) -> itemText itm
+  [itm] -> itemText itm
   (itm : itms) ->
-    ( T.intercalate ", a " (map itemText itms)
-    )
+    T.intercalate ", a " (map itemText itms)
       <> ", and a "
       <> itemText itm
   _ -> ""
@@ -137,4 +135,4 @@ helpText =
 
 -- | Use proprietary unlines to avoid \n after final item
 unlines :: [Text] -> Text
-unlines ts = T.intercalate "\n" ts
+unlines = T.intercalate "\n"
