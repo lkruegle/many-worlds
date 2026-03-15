@@ -27,9 +27,8 @@ main = hspec $ do
     prop "prop_correctSlide" prop_correctSlide
     prop "prop_correctLockedSlide" prop_correctLockedSlide
     prop "prop_staySolvable" prop_staySolvable
-    prop "prop_makePartiallySolvable" prop_makePartiallySolvable
-    -- prop "prop_makeSolvable" prop_makeSolvable
-    prop "prop_inspectWorldSpecGen" prop_inspectWorldSpecGen
+    prop "prop_makeNotUnsolvable" prop_makeNotUnsolvable
+    prop "prop_makeSolvable" prop_makeSolvable
 
 -- ======================= --
 -- API properties --
@@ -197,7 +196,9 @@ prop_staySolvable = forAll solvableWorldSpecGen $ \(start, spec) ->
             (not (null (getRoomIds (specRooms spec))))
             [snd <$> endRoomGen spec],
           addIf
-            (not (null (getRoomIds (specRooms spec))) && not (null (specItems spec)))
+            ( not (null (getRoomIds (specRooms spec)))
+                && not (null (specItems spec))
+            )
             [snd <$> endRoomWithItemsGen spec]
         ]
 
@@ -209,8 +210,8 @@ prop_staySolvable = forAll solvableWorldSpecGen $ \(start, spec) ->
 -- - adding all necessary items to the start room
 --
 -- The solver must be able to  find that trivially added solution.
-prop_makePartiallySolvable :: Property
-prop_makePartiallySolvable =
+prop_makeNotUnsolvable :: Property
+prop_makeNotUnsolvable =
   forAll unsolvableWorldSpecGen $ \(start@(RoomId startId), spec) ->
     let endCond = case Map.keys (specEndConditions spec) of
           (x : _) -> x
@@ -218,8 +219,8 @@ prop_makePartiallySolvable =
             error "unsolvableWorldSpecGen guarantuees at least 1 EndCondition"
         (_, spec') = addTrivialSolution (start, spec) endCond
      in case snd $ buildWorld $ toWorldBuilder spec' start of
-        Unsolvable _ -> False
-        _ -> True
+          Unsolvable _ -> False
+          _ -> True
 
 -- | Given a partially solvable WorldSpec that includes any end conditions
 -- there is always a way to make it solvable by adding trivial solutions to all
@@ -232,45 +233,28 @@ prop_makePartiallySolvable =
 prop_makeSolvable :: Property
 prop_makeSolvable =
   forAll unsolvableWorldSpecGen $ \(start@(RoomId startId), spec) ->
-    let spec' = snd $ foldl addTrivialSolution (start, spec) (Map.keys $ specEndConditions spec)
+    let spec' =
+          snd $
+            foldl
+              addTrivialSolution
+              (start, spec)
+              (Map.keys $ specEndConditions spec)
      in case snd $ buildWorld $ toWorldBuilder spec' start of
-        Solvable _ -> True
-        _ -> False
+          Solvable _ -> True
+          _ -> False
 
 addTrivialSolution :: (RoomId, WorldSpec) -> EndCondition -> (RoomId, WorldSpec)
 addTrivialSolution (start@(RoomId startId), spec) cond =
-  let extended = case cond of
-        EnterRoom end -> do
-          put spec
-          path start North end
-          return start
-        HoldItems itms -> do
-          put spec
-          room startId (pack "start") itms
-        EnterRoomWith end itms -> do
-          put spec
-          path start North end
-          room startId (pack "start") itms
-      (World spec state) = buildWorld' extended
-   in (currentRoom state, spec)
+  let spec' = case cond of
+        EnterRoom end -> execState (path start North end) spec
+        HoldItems itms -> execState (room startId (pack "start") itms) spec
+        EnterRoomWith end itms ->
+          execState
+            (path start North end >> room startId (pack "start") itms)
+            spec
+   in (start, spec')
 
 toWorldBuilder :: WorldSpec -> RoomId -> WorldBuilder RoomId
 toWorldBuilder spec start = do
   put spec
   return start
-
--- Separate property just to inspect the generator
-prop_inspectWorldSpecGen :: Property
-prop_inspectWorldSpecGen =
-  forAll (resize 20 worldSpecGen) $ \(startRoom, spec) ->
-    let result = snd (buildWorld (put spec >> return startRoom))
-        hasEndConds = not (null (specEndConditions spec))
-     in cover 10 (case result of Unsolvable _ -> hasEndConds; _ -> False) "unsolvable with end conditions"
-      $ cover 10 (case result of Unsolvable _ -> not hasEndConds; _ -> False) "unsolvable without end conditions"
-      $ cover 10 (case result of Solvable _ -> True; _ -> False) "solvable"
-      $ cover 10 (case result of Partial _ _ -> True; _ -> False) "partial"
-      $ label (case result of
-                 Unsolvable _ -> if hasEndConds then "unsolvable+endconds" else "unsolvable"
-                 Solvable _   -> "solvable"
-                 Partial _ _  -> "partial")
-      $ True

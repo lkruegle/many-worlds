@@ -318,4 +318,3 @@ worldSpecGen = (`runState` emptySpec) <$> worldBuilderGen
         (EnterRoom (RoomId "4"),"u\DC1")]})
     (PlayerState {currentRoom = RoomId "2", heldItems = []})
 -}
-
