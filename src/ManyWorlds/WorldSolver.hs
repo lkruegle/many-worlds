@@ -1,4 +1,3 @@
-
 module ManyWorlds.WorldSolver
   ( solveWorld,
   )
@@ -14,8 +13,7 @@ import ManyWorlds.InternalTypes
 -- Attempts to find a solution and returns that solution if one is found.
 --
 -- If the world is not solvable or partially solvable, all stuck states found
--- are returned. This means that some stuck states may be redundant as every
--- probe of the solver that does not find an end state generates a stuck state.
+-- are returned. A stuck state indicates where the solver got stuck and why.
 solveWorld :: World -> SolveResult
 solveWorld w = case breadthFirstSolve (S.singleton w) [(w, [])] of
   -- Empty worlds are unsolvable, this shouldn't really be possible though
