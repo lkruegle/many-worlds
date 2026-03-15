@@ -49,8 +49,8 @@ breadthFirstSolve visited ((world, path) : queue) =
         -- will return "false positive" StuckStates.
         let (solves, stucks) = breadthFirstSolve visited queue
          in case stuckType world of
-                        Just stuck -> (solves, stuck : stucks)
-                        Nothing -> (solves, stucks)
+              Just stuck -> (solves, stuck : stucks)
+              Nothing -> (solves, stucks)
       _ ->
         -- Add nextWorlds to the visited set, push to back of the queue
         -- And keep searching.
@@ -60,10 +60,15 @@ breadthFirstSolve visited ((world, path) : queue) =
     pickups = legalPickups world
     moves = legalMoves world
     pickupWorld = foldl (\w a -> fromMaybe w (takeAction w a)) world pickups
+    movesToCheck = case pickups of
+      [] -> legalMoves pickupWorld
+      -- If you picked up items, check if staying in the same triggers an end
+      -- condition
+      _ -> Look : legalMoves pickupWorld
     -- Create a list of alternate worlds that represent taking each of the
     -- currently legal moves.
     worlds' =
-        mapMaybe (\a -> fmap (a,) (takeAction pickupWorld a)) (legalMoves pickupWorld)
+      mapMaybe (\a -> fmap (a,) (takeAction pickupWorld a)) movesToCheck
     -- Create the next worlds to add to the queue based on worlds'. This
     -- filters out worlds that are equivalent to previously visted worlds to
     -- avoid backtracking.
@@ -76,12 +81,11 @@ breadthFirstSolve visited ((world, path) : queue) =
 -- | Gets all possible valid actions that can be taken in the current world.
 legalMoves :: World -> [Action]
 legalMoves world@(World _ state) =
-    [Move (currentRoom state) d | (d, p) <- currentPaths world, canMove p]
+  [Move (currentRoom state) d | (d, p) <- currentPaths world, canMove p]
   where
     canMove p = case pathKey p of
       Just k -> k `elem` inventory world
       _ -> True
-
 
 legalPickups :: World -> [Action]
 legalPickups world = [PickUp itm | itm <- currentRoomItems world]
